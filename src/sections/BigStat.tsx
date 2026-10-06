@@ -1,6 +1,7 @@
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import { AnimatedWords, EASE, Reveal } from "@/components/animations/text";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 
 /**
  * A single enormous number, then one quiet line to let it land. Deliberately
@@ -9,12 +10,51 @@ import { AnimatedWords, EASE, Reveal } from "@/components/animations/text";
  */
 export function BigStat() {
   const ref = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const numberRef = useRef<HTMLSpanElement>(null);
   const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-  const numberY = useTransform(scrollYProgress, [0, 1], ["12%", "-12%"]);
+
+  useIsoLayoutEffect(() => {
+    const section = ref.current;
+    if (!section) return;
+
+    const ctx = gsap.context(() => {
+      if (labelRef.current) {
+        gsap.from(labelRef.current, {
+          opacity: 0,
+          duration: 0.8,
+          ease: EASE,
+          scrollTrigger: { trigger: section, start: "top 78%", once: true },
+        });
+      }
+      const number = numberRef.current;
+      if (!number) return;
+      gsap.from(number, {
+        opacity: 0,
+        scale: 0.94,
+        duration: 1.4,
+        ease: EASE,
+        scrollTrigger: { trigger: section, start: "top 72%", once: true },
+      });
+      if (!reduce) {
+        gsap.fromTo(
+          number,
+          { yPercent: 12 },
+          {
+            yPercent: -12,
+            ease: "none",
+            scrollTrigger: {
+              trigger: section,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: true,
+            },
+          },
+        );
+      }
+    }, section);
+    return () => ctx.revert();
+  }, [reduce]);
 
   return (
     <section
@@ -24,25 +64,16 @@ export function BigStat() {
       <div className="shell">
         <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <motion.span
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              className="label-xs text-forest/45"
-            >
+            <span ref={labelRef} className="label-xs text-forest/45">
               03 — The scale
-            </motion.span>
+            </span>
             <div className="mt-6 flex items-start gap-6">
-              <motion.span
-                style={reduce ? undefined : { y: numberY }}
-                initial={{ opacity: 0, scale: 0.94 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: "-15% 0px" }}
-                transition={{ duration: 1.4, ease: EASE }}
-                className="display-num text-forest"
+              <span
+                ref={numberRef}
+                className="display-num inline-block text-forest"
               >
                 40<span className="text-ember">%</span>
-              </motion.span>
+              </span>
             </div>
             <h2 className="mt-10 max-w-xl text-[clamp(1.5rem,3vw,2.4rem)] leading-[1.05] font-extrabold tracking-[-0.04em] text-forest uppercase">
               <AnimatedWords
@@ -80,12 +111,6 @@ export function BigStat() {
             </div>
           </Reveal>
         </div>
-
-        <Reveal delay={0.25} className="mt-16 border-t border-forest/12 pt-8">
-          <p className="serif-i max-w-2xl text-[clamp(1.25rem,2.2vw,1.75rem)] leading-[1.35] text-forest/70">
-            Most of it was edible right up to the moment it was thrown out.
-          </p>
-        </Reveal>
       </div>
     </section>
   );

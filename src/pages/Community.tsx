@@ -1,11 +1,13 @@
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { FoodImage } from "@/components/FoodImage";
 import { PageHero, Panel } from "@/components/PageHero";
 import { communityPhoto } from "@/data/photos";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE, Reveal } from "@/components/animations/text";
+import { Reveal } from "@/components/animations/text";
+import { EASE, flipChildren, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useSlidingPill } from "@/hooks/use-sliding-pill";
 import { people } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
@@ -33,11 +35,41 @@ function matches(person: (typeof people)[number], filter: FilterId) {
 
 export default function Community() {
   const [filter, setFilter] = useState<FilterId>("all");
+  const gridRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { groupRef, pillRef } = useSlidingPill(filter);
 
   const visible = useMemo(
     () => people.filter((person) => matches(person, filter)),
     [filter],
   );
+
+  // Member cards rise in as the grid scrolls into view.
+  useIsoLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.from("[data-member-card]", {
+        opacity: 0,
+        y: 20,
+        duration: 0.7,
+        ease: EASE,
+        stagger: 0.04,
+        scrollTrigger: { trigger: grid, start: "top 88%", once: true },
+      });
+    }, grid);
+    return () => ctx.revert();
+  }, [reduce]);
+
+  // Switching group reflows the grid: gsap FLIPs the surviving cards.
+  const changeFilter = (next: FilterId) => {
+    const grid = gridRef.current;
+    if (!grid || reduce) {
+      setFilter(next);
+      return;
+    }
+    flipChildren(grid, () => setFilter(next));
+  };
 
   const leaders = useMemo(
     () => [...people].sort((a, b) => b.stat.length - a.stat.length).slice(0, 3),
@@ -52,14 +84,24 @@ export default function Community() {
         title={["People make", "the network."]}
         lede="Kitchens that cook, volunteers who ride, donors who list instead of binning. Recognition here is earned on delivered food — never on volume of listings alone."
       >
-        <div className="flex flex-wrap items-center gap-2 border-t border-forest/12 pt-6">
+        <div
+          ref={groupRef}
+          className="relative flex flex-wrap items-center gap-2 border-t border-forest/12 pt-6"
+        >
+          <span
+            ref={pillRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 left-0 rounded-full bg-forest"
+            style={{ opacity: 0 }}
+          />
           {filters.map((item) => {
             const active = filter === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setFilter(item.id)}
+                data-pill={item.id}
+                onClick={() => changeFilter(item.id)}
                 aria-pressed={active}
                 data-cursor="hover"
                 className={cn(
@@ -69,13 +111,6 @@ export default function Community() {
                     : "border-forest/18 text-forest/60 hover:border-forest/40 hover:text-forest",
                 )}
               >
-                {active ? (
-                  <motion.span
-                    layoutId="community-pill"
-                    className="absolute inset-0 rounded-full bg-forest"
-                    transition={{ type: "spring", stiffness: 320, damping: 30 }}
-                  />
-                ) : null}
                 <span className="relative z-10">{item.label}</span>
               </button>
             );
@@ -117,23 +152,17 @@ export default function Community() {
             </div>
           </Reveal>
 
-          <LayoutGroup>
-            <motion.div
-              layout
-              className="grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              <AnimatePresence mode="popLayout">
-                {visible.map((person, index) => (
-                  <motion.article
-                    key={person.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                    transition={{ duration: 0.7, ease: EASE, delay: index * 0.04 }}
-                    data-cursor="hover"
-                    className="group relative bg-[#fffdf8] p-6 transition-colors duration-500 hover:bg-sand/60"
-                  >
+          <div
+            ref={gridRef}
+            className="grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {visible.map((person) => (
+              <article
+                key={person.id}
+                data-member-card
+                data-cursor="hover"
+                className="group relative bg-[#fffdf8] p-6 transition-colors duration-500 hover:bg-sand/60"
+              >
                     <div className="flex items-start justify-between gap-4">
                       <span className="grid size-14 shrink-0 place-items-center rounded-full border border-forest/20 text-[0.85rem] font-bold tracking-[0.06em] text-forest uppercase">
                         {person.initials}
@@ -159,12 +188,10 @@ export default function Community() {
                     <p className="mt-6 border-t border-forest/12 pt-4 text-[0.88rem] text-forest/65">
                       {person.stat}
                     </p>
-                    <ArrowUpRight className="absolute right-6 bottom-6 size-4 -translate-x-2 text-forest/40 opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100" />
-                  </motion.article>
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          </LayoutGroup>
+                <ArrowUpRight className="absolute right-6 bottom-6 size-4 -translate-x-2 text-forest/40 opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100" />
+              </article>
+            ))}
+          </div>
 
           {visible.length === 0 ? (
             <div className="rounded-sm border border-forest/15 bg-[#fffdf8] px-6 py-16 text-center">
@@ -174,7 +201,11 @@ export default function Community() {
                 network yourself.
               </p>
               <div className="mt-8 flex justify-center">
-                <MagneticButton variant="outline" size="sm" onClick={() => setFilter("all")}>
+                <MagneticButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => changeFilter("all")}
+                >
                   Show everyone
                 </MagneticButton>
               </div>

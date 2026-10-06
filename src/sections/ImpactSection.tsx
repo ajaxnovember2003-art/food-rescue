@@ -1,9 +1,11 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { ImpactCounter } from "@/components/animations/ImpactCounter";
 import { CategoryBars, ImpactRing, RescueTrendChart } from "@/components/ImpactChart";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { SectionHeading } from "@/components/SectionHeading";
 import { EASE, Reveal } from "@/components/animations/text";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { useDemo } from "@/store/demo";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -14,6 +16,39 @@ import { cn } from "@/lib/utils";
  */
 export function ImpactSection() {
   const { stats, personal, lastDelta, rescuesThisSession } = useDemo();
+  const reduce = useReducedMotion();
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const deltaRef = useRef<HTMLParagraphElement>(null);
+  const deltaKey = lastDelta?.at ?? "";
+
+  // The three headline numbers rise in as their band enters the viewport.
+  useIsoLayoutEffect(() => {
+    const rows = rowsRef.current;
+    if (!rows || reduce) return;
+    const items = rows.querySelectorAll<HTMLElement>("[data-impact-row]");
+    const ctx = gsap.context(() => {
+      gsap.from(items, {
+        opacity: 0,
+        y: 26,
+        duration: 0.9,
+        ease: EASE,
+        stagger: 0.06,
+        scrollTrigger: { trigger: rows, start: "top 80%", once: true },
+      });
+    }, rows);
+    return () => ctx.revert();
+  }, [reduce]);
+
+  // The "your last rescue" delta fades up whenever a new one lands.
+  useEffect(() => {
+    const element = deltaRef.current;
+    if (!element) return;
+    gsap.fromTo(
+      element,
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.5, ease: EASE },
+    );
+  }, [deltaKey]);
 
   return (
     <section className="relative overflow-hidden bg-forest-deep py-24 text-ivory md:py-32">
@@ -36,7 +71,7 @@ export function ImpactSection() {
 
         {/* The payoff: three enormous numbers, alternating sides, each one
             counting up as it enters the viewport. */}
-        <div className="mt-16 border-t border-ivory/15">
+        <div ref={rowsRef} className="mt-16 border-t border-ivory/15">
           {[
             {
               value: stats.mealsRescued,
@@ -57,12 +92,9 @@ export function ImpactSection() {
               note: "Reached through community kitchens, shelters and shared fridges.",
             },
           ].map((row, index) => (
-            <motion.div
+            <div
               key={row.label}
-              initial={{ opacity: 0, y: 26 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-8% 0px" }}
-              transition={{ duration: 0.9, ease: EASE, delay: index * 0.06 }}
+              data-impact-row
               className={cn(
                 "flex flex-col gap-5 border-b border-ivory/12 py-9 md:flex-row md:items-end md:justify-between md:gap-12",
                 index % 2 === 1 && "md:flex-row-reverse md:text-right",
@@ -87,26 +119,21 @@ export function ImpactSection() {
                   {row.note}
                 </p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         <div className="relative mt-6 h-6">
-          <AnimatePresence>
-            {lastDelta ? (
-              <motion.p
-                key={lastDelta.at}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5, ease: EASE }}
-                className="label-xs absolute left-0 text-ember"
-              >
-                + {formatNumber(lastDelta.meals)} meals · +{lastDelta.kg} kg
-                diverted from your last rescue
-              </motion.p>
-            ) : null}
-          </AnimatePresence>
+          {lastDelta ? (
+            <p
+              ref={deltaRef}
+              key={lastDelta.at}
+              className="label-xs absolute left-0 text-ember"
+            >
+              + {formatNumber(lastDelta.meals)} meals · +{lastDelta.kg} kg
+              diverted from your last rescue
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">

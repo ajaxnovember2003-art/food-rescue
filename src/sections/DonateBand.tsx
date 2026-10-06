@@ -1,11 +1,12 @@
-import { motion } from "framer-motion";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { FoodImage } from "@/components/FoodImage";
 import { heroPhoto } from "@/data/photos";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { RevealImage } from "@/components/animations/RevealImage";
 import { EASE, Reveal } from "@/components/animations/text";
+import { useRise } from "@/hooks/use-rise";
+import { gsap } from "@/lib/gsap";
 import { cn } from "@/lib/utils";
 
 const steps = [
@@ -22,6 +23,17 @@ const steps = [
 export function DonateBand() {
   const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
+
+  useRise(headingRef, { stagger: 0.08, yPercent: 112, start: "top 88%" });
+
+  // Hover pushes the artwork in — a gsap tween instead of a motion value.
+  useEffect(() => {
+    const image = imageRef.current;
+    if (!image) return;
+    gsap.to(image, { scale: hovered ? 1.04 : 1, duration: 1.2, ease: EASE });
+  }, [hovered]);
 
   return (
     <section className="relative bg-sand py-24 md:py-32">
@@ -34,28 +46,16 @@ export function DonateBand() {
         >
           <div className="lg:col-span-6">
             <span className="label-xs text-forest/45">08 — Give it again</span>
-            <h2 className="display-lg mt-6 text-forest">
+            <h2 ref={headingRef} className="display-lg mt-6 text-forest">
               <span className="block overflow-hidden py-[0.02em]">
-                <motion.span
-                  className="block"
-                  initial={{ y: "112%" }}
-                  whileInView={{ y: "0%" }}
-                  viewport={{ once: true, margin: "-10% 0px" }}
-                  transition={{ duration: 1.1, ease: EASE }}
-                >
+                <span data-rise className="block">
                   Have extra food?
-                </motion.span>
+                </span>
               </span>
               <span className="block overflow-hidden py-[0.02em]">
-                <motion.span
-                  className="block text-ember"
-                  initial={{ y: "112%" }}
-                  whileInView={{ y: "0%" }}
-                  viewport={{ once: true, margin: "-10% 0px" }}
-                  transition={{ duration: 1.1, ease: EASE, delay: 0.08 }}
-                >
+                <span data-rise className="block text-ember">
                   Give it a second life.
-                </motion.span>
+                </span>
               </span>
             </h2>
 
@@ -98,11 +98,7 @@ export function DonateBand() {
               className="aspect-[4/5] w-full rounded-sm sm:aspect-[16/12] lg:aspect-[4/5]"
               parallax={26}
             >
-              <motion.div
-                className="h-full w-full"
-                animate={{ scale: hovered ? 1.04 : 1 }}
-                transition={{ duration: 1.2, ease: EASE }}
-              >
+              <div ref={imageRef} className="h-full w-full">
                 <FoodImage
                   photo={heroPhoto}
                   category="meals"
@@ -111,7 +107,7 @@ export function DonateBand() {
                   tint={0.12}
                   sizes="(max-width: 1024px) 92vw, 45vw"
                 />
-              </motion.div>
+              </div>
             </RevealImage>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[0.72rem] text-forest/55">

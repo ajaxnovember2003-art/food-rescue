@@ -1,7 +1,8 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
 import type { FoodCategory } from "@/types";
 import { cn } from "@/lib/utils";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 /**
  * Original vector art direction for FoodRescue.
@@ -29,9 +30,30 @@ export function FoodArtwork({
   const grain = `hsl(${(hue + 40) % 360} 62% 72%)`;
   const clay = `hsl(${(hue + 180) % 360} 45% 62%)`;
   const id = `fa-${category}-${seed}-${hue}`;
+  const reduce = useReducedMotion();
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // The contents settle into the container as the artwork scrolls into view.
+  useIsoLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !animateContents || reduce) return;
+    const ctx = gsap.context(() => {
+      const groups = gsap.utils.toArray<SVGGElement>("[data-fa-content]");
+      if (!groups.length) return;
+      gsap.from(groups, {
+        y: 8,
+        opacity: 0,
+        duration: 0.9,
+        ease: EASE,
+        scrollTrigger: { trigger: svg, start: "top 92%", once: true },
+      });
+    }, svg);
+    return () => ctx.revert();
+  }, [animateContents, reduce]);
 
   return (
     <svg
+      ref={svgRef}
       viewBox="0 0 400 300"
       preserveAspectRatio="xMidYMid slice"
       role="img"
@@ -87,17 +109,11 @@ export function FoodArtwork({
           />
           <ellipse cx="200" cy="178" rx="122" ry="34" fill={grain} />
           <ellipse cx="200" cy="172" rx="122" ry="34" fill="rgba(255,253,248,0.92)" />
-          <motion.g
-            initial={animateContents ? { y: 6, opacity: 0 } : false}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: EASE }}
-          >
+          <g data-fa-content>
             <circle cx="158" cy="164" r="17" fill={clay} />
             <circle cx="200" cy="156" r="20" fill={glow} opacity="0.85" />
             <circle cx="244" cy="166" r="15" fill={grain} />
-            <rect x="182" y="176" width="36" height="10" rx="5" fill={clay} opacity="0.7" />
-          </motion.g>
+            <rect x="182" y="176" width="36" height="10" rx="5" fill={clay} opacity="0.7" />            </g>
           <g opacity="0.5" stroke="#fffdf8" strokeWidth="2" fill="none" strokeLinecap="round">
             <path d="M172 118 c-6 -12 6 -18 0 -30" />
             <path d="M200 110 c-6 -12 6 -18 0 -30" />
@@ -110,12 +126,7 @@ export function FoodArtwork({
         <g>
           <path d="M66 150 h268 v104 a10 10 0 0 1 -10 10 H76 a10 10 0 0 1 -10 -10 z" fill="rgba(11,43,34,0.55)" />
           <path d="M66 150 h268 v18 H66 z" fill="rgba(246,241,230,0.18)" />
-          <motion.g
-            initial={animateContents ? { y: 10, opacity: 0 } : false}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: EASE }}
-          >
+          <g data-fa-content>
             {[
               { x: 96, w: 76, h: 40, y: 108, f: grain },
               { x: 186, w: 88, h: 46, y: 100, f: "rgba(255,253,248,0.95)" },
@@ -137,8 +148,7 @@ export function FoodArtwork({
                   strokeDasharray="6 8"
                 />
               </g>
-            ))}
-          </motion.g>
+            ))}            </g>
           <path d="M66 150 h268" stroke="rgba(246,241,230,0.4)" strokeWidth="1" />
         </g>
       ) : null}
@@ -146,18 +156,12 @@ export function FoodArtwork({
       {category === "fruits" ? (
         <g>
           <path d="M64 158 h272 v96 a8 8 0 0 1 -8 8 H72 a8 8 0 0 1 -8 -8 z" fill="rgba(11,43,34,0.5)" />
-          <motion.g
-            initial={animateContents ? { y: 8, opacity: 0 } : false}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: EASE }}
-          >
+          <g data-fa-content>
             <circle cx="128" cy="140" r="30" fill={clay} />
             <circle cx="188" cy="130" r="34" fill={grain} />
             <circle cx="252" cy="142" r="28" fill={glow} opacity="0.9" />
             <circle cx="300" cy="152" r="22" fill={clay} opacity="0.85" />
-            <circle cx="104" cy="150" r="20" fill={grain} opacity="0.7" />
-          </motion.g>
+            <circle cx="104" cy="150" r="20" fill={grain} opacity="0.7" />            </g>
           {[64, 96, 128].map((y) => (
             <line key={y} x1="64" y1={y + 130} x2="336" y2={y + 130} stroke="rgba(246,241,230,0.16)" />
           ))}
@@ -167,12 +171,7 @@ export function FoodArtwork({
       {category === "vegetables" ? (
         <g>
           <path d="M64 160 h272 v94 a8 8 0 0 1 -8 8 H72 a8 8 0 0 1 -8 -8 z" fill="rgba(11,43,34,0.5)" />
-          <motion.g
-            initial={animateContents ? { y: 8, opacity: 0 } : false}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: EASE }}
-          >
+          <g data-fa-content>
             {[
               { x: 118, hue: 118 },
               { x: 168, hue: 96 },
@@ -194,8 +193,7 @@ export function FoodArtwork({
                   strokeWidth="1.4"
                 />
               </g>
-            ))}
-          </motion.g>
+            ))}            </g>
           <line x1="64" y1="200" x2="336" y2="200" stroke="rgba(246,241,230,0.16)" />
           <line x1="64" y1="232" x2="336" y2="232" stroke="rgba(246,241,230,0.16)" />
         </g>
@@ -203,12 +201,7 @@ export function FoodArtwork({
 
       {category === "packaged" ? (
         <g>
-          <motion.g
-            initial={animateContents ? { y: 10, opacity: 0 } : false}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: EASE }}
-          >
+          <g data-fa-content>
             {[
               { x: 96, h: 116 },
               { x: 178, h: 138 },
@@ -249,8 +242,7 @@ export function FoodArtwork({
                   strokeWidth="3"
                 />
               </g>
-            ))}
-          </motion.g>
+            ))}            </g>
           <path d="M64 244 h272" stroke="rgba(246,241,230,0.2)" />
         </g>
       ) : null}

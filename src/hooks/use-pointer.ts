@@ -1,40 +1,47 @@
-import { useMotionValue, useSpring, type MotionValue } from "framer-motion";
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 export interface PointerParallax {
-  /** Normalised pointer position, -0.5 → 0.5 on both axes. */
-  x: MotionValue<number>;
-  y: MotionValue<number>;
+  /**
+   * Subscribers receive normalised pointer offsets inside the container
+   * (-0.5 → 0.5 on both axes). Each subscriber applies its own multiplier
+   * through a springy gsap quickTo, which keeps the depth parallax smooth
+   * without any animation library values. Disabled on touch devices.
+   */
+  subscribe(fn: (x: number, y: number) => void): () => void;
 }
 
-/**
- * Tracks the pointer inside a container and returns two smoothed motion values.
- * Layers pick their own multiplier, which is how the cursor parallax gets depth
- * without the page ever moving aggressively. Disabled on touch devices.
- */
 export function usePointerParallax(
   containerRef: RefObject<HTMLElement | null>,
-  { stiffness = 90, damping = 20 } = {},
 ): PointerParallax {
-  const rawX = useMotionValue(0);
-  const rawY = useMotionValue(0);
-  const x = useSpring(rawX, { stiffness, damping, mass: 0.6 });
-  const y = useSpring(rawY, { stiffness, damping, mass: 0.6 });
+  const subscribers = useRef(new Set<(x: number, y: number) => void>());
+
+  // The public handle is created once and never read from a ref during render;
+  // the subscriber set it closes over lives in a ref.
+  const [pointer] = useState<PointerParallax>(() => ({
+    subscribe(fn) {
+      subscribers.current.add(fn);
+      return () => {
+        subscribers.current.delete(fn);
+      };
+    },
+  }));
 
   useEffect(() => {
     const node = containerRef.current;
     if (!node) return;
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
+    const notify = (x: number, y: number) => {
+      for (const fn of subscribers.current) fn(x, y);
+    };
     const onMove = (event: MouseEvent) => {
       const rect = node.getBoundingClientRect();
-      rawX.set((event.clientX - rect.left) / rect.width - 0.5);
-      rawY.set((event.clientY - rect.top) / rect.height - 0.5);
+      notify(
+        (event.clientX - rect.left) / rect.width - 0.5,
+        (event.clientY - rect.top) / rect.height - 0.5,
+      );
     };
-    const onLeave = () => {
-      rawX.set(0);
-      rawY.set(0);
-    };
+    const onLeave = () => notify(0, 0);
 
     node.addEventListener("mousemove", onMove);
     node.addEventListener("mouseleave", onLeave);
@@ -42,7 +49,7 @@ export function usePointerParallax(
       node.removeEventListener("mousemove", onMove);
       node.removeEventListener("mouseleave", onLeave);
     };
-  }, [containerRef, rawX, rawY]);
+  }, [containerRef]);
 
-  return { x, y };
+  return pointer;
 }

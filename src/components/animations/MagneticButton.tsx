@@ -1,9 +1,13 @@
-import { motion, useMotionValue, useSpring } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router";
+import { gsap } from "@/lib/gsap";
 import { cn } from "@/lib/utils";
-import { EASE } from "@/components/animations/text";
 
 type Variant = "primary" | "outline" | "light" | "ember";
 
@@ -34,6 +38,8 @@ interface MagneticButtonProps {
 /**
  * Buttons are the product's handshake: a small magnetic pull toward the cursor,
  * a sliding arrow and a soft ink fill. Deliberately restrained — no bounces.
+ * The pull runs through gsap quickTo, which gives it the springy settle that
+ * used to come from a motion-value spring.
  */
 export function MagneticButton({
   children,
@@ -50,10 +56,22 @@ export function MagneticButton({
   ariaLabel,
 }: MagneticButtonProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const springX = useSpring(x, { stiffness: 220, damping: 18, mass: 0.4 });
-  const springY = useSpring(y, { stiffness: 220, damping: 18, mass: 0.4 });
+  const movers = useRef<{
+    x: (value: number) => void;
+    y: (value: number) => void;
+  } | null>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    movers.current = {
+      x: gsap.quickTo(node, "x", { duration: 0.5, ease: "power3.out" }),
+      y: gsap.quickTo(node, "y", { duration: 0.5, ease: "power3.out" }),
+    };
+    return () => {
+      movers.current = null;
+    };
+  }, []);
 
   const handleMove = (event: ReactMouseEvent) => {
     const node = ref.current;
@@ -61,13 +79,13 @@ export function MagneticButton({
     const rect = node.getBoundingClientRect();
     const offsetX = event.clientX - (rect.left + rect.width / 2);
     const offsetY = event.clientY - (rect.top + rect.height / 2);
-    x.set((offsetX / rect.width) * strength * 2);
-    y.set((offsetY / rect.height) * strength * 1.4);
+    movers.current?.x((offsetX / rect.width) * strength * 2);
+    movers.current?.y((offsetY / rect.height) * strength * 1.4);
   };
 
   const reset = () => {
-    x.set(0);
-    y.set(0);
+    movers.current?.x(0);
+    movers.current?.y(0);
   };
 
   const sizeClass =
@@ -102,19 +120,16 @@ export function MagneticButton({
   );
 
   const inner = (
-    <motion.div
+    <div
       ref={ref}
-      style={{ x: springX, y: springY }}
       onMouseMove={handleMove}
       onMouseLeave={reset}
       className="inline-flex"
       data-cursor={cursorLabel ? "label" : "hover"}
       data-cursor-label={cursorLabel}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4, ease: EASE }}
     >
       {content}
-    </motion.div>
+    </div>
   );
 
   if (to) {
@@ -170,7 +185,7 @@ export function TextLink({
   return (
     <button type="button" onClick={onClick} className={classes} data-cursor="hover">
       <span className="link-underline">{children}</span>
-      <ArrowRight className="size-3.5 transition-transform duration-500 group-hover:translate-x-1" />
+      <ArrowRight className="size-3.5 transition-transform duration-500 group-hover/btn:translate-x-1" />
     </button>
   );
 }

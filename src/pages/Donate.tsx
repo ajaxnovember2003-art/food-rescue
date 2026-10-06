@@ -1,4 +1,3 @@
-import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Info, PartyPopper, X } from "lucide-react";
 import {
   useMemo,
@@ -13,7 +12,8 @@ import { FoodImage } from "@/components/FoodImage";
 import { photoAt } from "@/data/photos";
 import { PageHero } from "@/components/PageHero";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { todayISO } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useDemo } from "@/store/demo";
@@ -88,6 +88,23 @@ export default function Donate() {
   const [image, setImage] = useState<{ name: string; size: number } | null>(null);
   const [result, setResult] = useState<{ code: string; id: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const viewRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  // The form and the confirmation share one slot; whichever is showing fades
+  // in from the direction it arrives from.
+  useIsoLayoutEffect(() => {
+    const el = viewRef.current;
+    if (!el || reduce) return;
+    const tween = gsap.fromTo(
+      el,
+      { opacity: 0, y: result ? 24 : 0 },
+      { opacity: 1, y: 0, duration: result ? 0.8 : 0.5, ease: EASE },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [result, reduce]);
 
   const set = <Key extends keyof DonationDraft>(
     key: Key,
@@ -144,16 +161,9 @@ export default function Donate() {
 
       <section className="bg-ivory pb-28">
         <div className="shell">
-          <AnimatePresence mode="wait">
+          <div ref={viewRef}>
             {result ? (
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.8, ease: EASE }}
-                className="relative overflow-hidden rounded-sm border border-forest bg-forest px-6 py-16 text-ivory sm:px-12 sm:py-20"
-              >
+              <div className="relative overflow-hidden rounded-sm border border-forest bg-forest px-6 py-16 text-ivory sm:px-12 sm:py-20">
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0"
@@ -218,15 +228,10 @@ export default function Donate() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ) : (
-              <motion.form
-                key="form"
+              <form
                 onSubmit={handleSubmit}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5, ease: EASE }}
                 className="grid gap-12 lg:grid-cols-12 lg:gap-10"
                 noValidate
               >
@@ -527,9 +532,9 @@ export default function Donate() {
                     </div>
                   </div>
                 </div>
-              </motion.form>
+              </form>
             )}
-          </AnimatePresence>
+          </div>
         </div>
       </section>
     </>

@@ -1,14 +1,7 @@
-import {
-  AnimatePresence,
-  motion,
-  useAnimationFrame,
-  useInView,
-  useReducedMotion,
-  useSpring,
-  useTransform,
-} from "framer-motion";
 import { useRef, useState, type RefObject } from "react";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useInView } from "@/hooks/use-in-view";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { cn } from "@/lib/utils";
 import type { PointerParallax } from "@/hooks/use-pointer";
 
@@ -19,8 +12,10 @@ const RADIUS = 152;
 const START_ANGLE = -150;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 /** One full loop of the network: donor → … → impact → NGO → donor. */
-const CYCLE = 16000;
+const CYCLE = 16;
 const LABEL_RADIUS = RADIUS + 30;
+/** Spokes run from the ring inwards to the hub — every one is the same length. */
+const SPOKE_LENGTH = RADIUS - 12 - 74;
 
 interface NodeDef {
   id: string;
@@ -93,10 +88,11 @@ function polar(angleDeg: number, radius: number) {
 
 /**
  * The site's recurring motif: five stops orbiting a central RESCUE hub with a
- * food parcel travelling the route. Everything is driven from one frame loop —
- * the route lights up behind the parcel, nodes activate as it passes, and the
- * hub pulses on every hand-off. Hovering or focusing a node takes over the
- * read-out without stopping the journey.
+ * food parcel travelling the route. The parcel, the trail and the route
+ * highlight are driven from one gsap ticker loop; the entrance draw, hub pulses
+ * and read-out are gsap tweens. Everything is positioned via SVG attributes so
+ * the frame loop never fights the CSS transform layer. Hovering or focusing a
+ * node takes over the read-out without stopping the journey.
  */
 export function RescueNetwork({
   parallax,
@@ -107,6 +103,8 @@ export function RescueNetwork({
 }) {
   const reduce = useReducedMotion();
   const hostRef = useRef<HTMLDivElement>(null);
+  const ringWrapRef = useRef<HTMLDivElement>(null);
+  const readoutRef = useRef<HTMLDivElement>(null);
   const visible = useInView(hostRef, { margin: "20% 0px" });
 
   const [seq, setSeq] = useState(0);
@@ -125,62 +123,171 @@ export function RescueNetwork({
     [trailC, TRAIL_OFFSETS[2]],
   ];
 
-  const fallbackX = useSpring(0, { stiffness: 90, damping: 20 });
-  const fallbackY = useSpring(0, { stiffness: 90, damping: 20 });
-  const px = parallax?.x ?? fallbackX;
-  const py = parallax?.y ?? fallbackY;
-
-  const ringX = useTransform(px, (value) => value * 24);
-  const ringY = useTransform(py, (value) => value * 24);
-
-  useAnimationFrame((time) => {
-    // Paused off-screen or under reduced motion; restarting visibility begins
-    // a fresh loop from the donor rather than jumping into a mid-cycle.
-    if (reduce || !visible) {
-      startRef.current = null;
-      return;
-    }
-    if (startRef.current === null) startRef.current = time;
-    const progress = ((time - startRef.current) % CYCLE) / CYCLE;
-
-    const point = polar(START_ANGLE + 360 * progress, RADIUS);
-    parcelRef.current?.setAttribute(
-      "transform",
-      `translate(${point.x - 17} ${point.y - 13})`,
-    );
-    highlightRef.current?.setAttribute(
-      "stroke-dasharray",
-      `${(CIRCUMFERENCE * progress).toFixed(2)} ${CIRCUMFERENCE.toFixed(2)}`,
-    );
-    trails.forEach(([ref, offset]) => {
-      const trailing = polar(
-        START_ANGLE + 360 * ((progress - offset + 1) % 1),
-        RADIUS,
-      );
-      ref.current?.setAttribute(
-        "transform",
-        `translate(${trailing.x} ${trailing.y})`,
-      );
-    });
-
-    const next = Math.min(NODES.length - 1, Math.floor(progress * NODES.length));
-    if (next !== seqRef.current) {
-      seqRef.current = next;
-      setSeq(next);
-    }
-  });
-
   const activeNode =
     NODES.find((node) => node.id === override) ?? NODES[seq] ?? NODES[0];
   const activeIndex = NODES.findIndex((node) => node.id === activeNode.id);
 
+  // Entrance: the route draws itself, then the spokes and node markers land.
+  useIsoLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const ctx = gsap.context(() => {
+      if (reduce) return;
+      gsap.set("[data-route]", {
+        strokeDasharray: CIRCUMFERENCE,
+        strokeDashoffset: CIRCUMFERENCE,
+      });
+      gsap.set("[data-spoke]", {
+        strokeDasharray: SPOKE_LENGTH,
+        strokeDashoffset: SPOKE_LENGTH,
+        opacity: 0,
+      });
+      gsap.set("[data-node-marker]", { opacity: 0, scale: 0.6 });
+
+      const tl = gsap.timeline();
+      tl.to("[data-route]", { strokeDashoffset: 0, duration: 1.6, ease: EASE }, 0.35)
+        .to(
+          "[data-spoke]",
+          { strokeDashoffset: 0, opacity: 1, duration: 1.1, ease: EASE, stagger: 0.07 },
+          0.6,
+        )
+        .to(
+          "[data-node-marker]",
+          { opacity: 1, scale: 1, duration: 0.7, ease: EASE, stagger: 0.07 },
+          0.75,
+        );
+    }, host);
+    return () => ctx.revert();
+  }, [reduce]);
+
+  // Ambient motion: two hub pulses and the slow dashed ring.
+  useIsoLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host || reduce) return;
+    const ctx = gsap.context(() => {
+      const pulses = gsap.utils.toArray<SVGCircleElement>("[data-hub-pulse]");
+      pulses.forEach((el, index) => {
+        gsap.fromTo(
+          el,
+          { attr: { r: 66 }, opacity: 0.35 },
+          {
+            attr: { r: 104 },
+            opacity: 0,
+            duration: 2.8,
+            repeat: -1,
+            ease: "power2.out",
+            delay: 1.4 + index * 1.4,
+          },
+        );
+      });
+      const dashed = host.querySelector("[data-hub-ring]");
+      if (dashed) {
+        gsap.to(dashed, {
+          rotation: 360,
+          svgOrigin: `${CENTER} ${CENTER}`,
+          duration: 40,
+          ease: "none",
+          repeat: -1,
+        });
+      }
+    }, host);
+    return () => ctx.revert();
+  }, [reduce]);
+
+  // One ring pulse each time a new node takes over.
+  useIsoLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host || reduce) return;
+    const el = host.querySelector<SVGCircleElement>(
+      `[data-node-pulse="${activeNode.id}"]`,
+    );
+    if (!el) return;
+    const tween = gsap.fromTo(
+      el,
+      { scale: 1, opacity: 0.8 },
+      { scale: 2, opacity: 0, duration: 1.4, ease: "power2.out" },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [activeNode.id, reduce]);
+
+  // Read-out crossfade.
+  useIsoLayoutEffect(() => {
+    const el = readoutRef.current;
+    if (!el || reduce) return;
+    const tween = gsap.fromTo(
+      el,
+      { opacity: 0, y: 6 },
+      { opacity: 1, y: 0, duration: 0.3, ease: EASE },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [activeNode.id, reduce]);
+
+  // Pointer depth: the whole ring drifts against the pointer.
+  useIsoLayoutEffect(() => {
+    const wrap = ringWrapRef.current;
+    if (!wrap || !parallax || reduce) return;
+    const xTo = gsap.quickTo(wrap, "x", { duration: 0.9, ease: "power3.out" });
+    const yTo = gsap.quickTo(wrap, "y", { duration: 0.9, ease: "power3.out" });
+    return parallax.subscribe((x, y) => {
+      xTo(x * 24);
+      yTo(y * 24);
+    });
+  }, [parallax, reduce]);
+
+  // The journey: one ticker loop drives parcel, trail and route highlight.
+  useIsoLayoutEffect(() => {
+    const trailNodes: Array<[SVGCircleElement | null, number]> = [
+      [trailA.current, TRAIL_OFFSETS[0]],
+      [trailB.current, TRAIL_OFFSETS[1]],
+      [trailC.current, TRAIL_OFFSETS[2]],
+    ];
+
+    const tick = (time: number) => {
+      // Paused off-screen or under reduced motion; restarting visibility begins
+      // a fresh loop from the donor rather than jumping into a mid-cycle.
+      if (reduce || !visible) {
+        startRef.current = null;
+        return;
+      }
+      if (startRef.current === null) startRef.current = time;
+      const progress = ((time - startRef.current) % CYCLE) / CYCLE;
+
+      const point = polar(START_ANGLE + 360 * progress, RADIUS);
+      parcelRef.current?.setAttribute(
+        "transform",
+        `translate(${point.x - 17} ${point.y - 13})`,
+      );
+      highlightRef.current?.setAttribute(
+        "stroke-dasharray",
+        `${(CIRCUMFERENCE * progress).toFixed(2)} ${CIRCUMFERENCE.toFixed(2)}`,
+      );
+      trailNodes.forEach(([ref, offset]) => {
+        const trailing = polar(
+          START_ANGLE + 360 * ((progress - offset + 1) % 1),
+          RADIUS,
+        );
+        ref?.setAttribute("transform", `translate(${trailing.x} ${trailing.y})`);
+      });
+
+      const next = Math.min(NODES.length - 1, Math.floor(progress * NODES.length));
+      if (next !== seqRef.current) {
+        seqRef.current = next;
+        setSeq(next);
+      }
+    };
+
+    gsap.ticker.add(tick);
+    return () => gsap.ticker.remove(tick);
+  }, [reduce, visible]);
+
   return (
     <div ref={hostRef} className={cn("flex w-full flex-col", className)}>
       <div className="relative aspect-square w-full">
-        <motion.div
-          className="absolute inset-0"
-          style={{ x: ringX, y: ringY }}
-        >
+        <div ref={ringWrapRef} className="absolute inset-0">
           <svg
             viewBox={`0 0 ${VIEW} ${VIEW}`}
             preserveAspectRatio="xMidYMid meet"
@@ -206,16 +313,14 @@ export function RescueNetwork({
             />
 
             {/* the route itself — drawn on entrance */}
-            <motion.circle
+            <circle
+              data-route
               cx={CENTER}
               cy={CENTER}
               r={RADIUS}
               fill="none"
               stroke="rgba(246,241,230,0.16)"
               strokeWidth="1"
-              initial={reduce ? { pathLength: 1 } : { pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 1.6, ease: EASE, delay: 0.35 }}
             />
 
             {/* route lit behind the parcel */}
@@ -237,12 +342,13 @@ export function RescueNetwork({
             />
 
             {/* radial spokes to the hub */}
-            {NODES.map((node, index) => {
+            {NODES.map((node) => {
               const from = polar(node.angle, RADIUS - 12);
               const to = polar(node.angle, 74);
               const isActive = node.id === activeNode.id;
               return (
-                <motion.line
+                <line
+                  data-spoke
                   key={node.id}
                   x1={from.x}
                   y1={from.y}
@@ -252,13 +358,6 @@ export function RescueNetwork({
                     isActive ? "rgba(226,112,58,0.85)" : "rgba(246,241,230,0.18)"
                   }
                   strokeWidth={isActive ? 1.4 : 1}
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{
-                    duration: 1.1,
-                    ease: EASE,
-                    delay: reduce ? 0 : 0.6 + index * 0.07,
-                  }}
                 />
               );
             })}
@@ -295,36 +394,23 @@ export function RescueNetwork({
             {/* hub */}
             {!reduce ? (
               <>
-                <motion.circle
+                <circle
+                  data-hub-pulse
                   cx={CENTER}
                   cy={CENTER}
                   r={66}
                   fill="none"
                   stroke="rgba(226,112,58,0.4)"
                   strokeWidth="1"
-                  initial={{ r: 66, opacity: 0.4 }}
-                  animate={{ r: [66, 104], opacity: [0.35, 0] }}
-                  transition={{
-                    duration: 2.8,
-                    repeat: Infinity,
-                    ease: "easeOut",
-                    delay: 1.4,
-                  }}
                 />
-                <motion.circle
+                <circle
+                  data-hub-pulse
                   cx={CENTER}
                   cy={CENTER}
                   r={66}
                   fill="none"
                   stroke="rgba(246,241,230,0.25)"
                   strokeWidth="1"
-                  animate={{ r: [66, 104], opacity: [0.22, 0] }}
-                  transition={{
-                    duration: 2.8,
-                    repeat: Infinity,
-                    ease: "easeOut",
-                    delay: 2.8,
-                  }}
                 />
               </>
             ) : null}
@@ -335,16 +421,14 @@ export function RescueNetwork({
               fill="rgba(5,23,19,0.78)"
               stroke="rgba(246,241,230,0.22)"
             />
-            <motion.circle
+            <circle
+              data-hub-ring
               cx={CENTER}
               cy={CENTER}
               r="52"
               fill="none"
               stroke="rgba(226,112,58,0.35)"
               strokeDasharray="3 5"
-              style={{ originX: "50%", originY: "50%" }}
-              animate={reduce ? undefined : { rotate: 360 }}
-              transition={{ duration: 40, ease: "linear", repeat: Infinity }}
             />
 
             {/* node markers */}
@@ -353,24 +437,17 @@ export function RescueNetwork({
               const isActive = node.id === activeNode.id;
               const passed = index < seq;
               return (
-                <motion.g
-                  key={`marker-${node.id}`}
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    duration: 0.7,
-                    ease: EASE,
-                    delay: reduce ? 0 : 0.75 + index * 0.07,
-                  }}
-                  style={{ originX: `${point.x}px`, originY: `${point.y}px` }}
-                >
+                <g data-node-marker key={`marker-${node.id}`}>
                   <circle
                     cx={point.x}
                     cy={point.y}
                     r={isActive ? 7 : 5}
                     fill={isActive || passed ? "#e2703a" : "#f6f1e6"}
                     opacity={isActive ? 1 : passed ? 0.6 : 0.85}
-                    style={{ transition: "fill 0.45s ease, r 0.45s ease, opacity 0.45s ease" }}
+                    style={{
+                      transition:
+                        "fill 0.45s ease, r 0.45s ease, opacity 0.45s ease",
+                    }}
                   />
                   <circle
                     cx={point.x}
@@ -378,34 +455,30 @@ export function RescueNetwork({
                     r={isActive ? 15 : 11}
                     fill="none"
                     stroke={
-                      isActive ? "rgba(226,112,58,0.55)" : "rgba(246,241,230,0.26)"
+                      isActive
+                        ? "rgba(226,112,58,0.55)"
+                        : "rgba(246,241,230,0.26)"
                     }
                     strokeWidth="1"
                     style={{ transition: "r 0.45s ease, stroke 0.45s ease" }}
                   />
-                  {isActive && !reduce ? (
-                    <motion.circle
-                      key={`pulse-${node.id}-${activeIndex}`}
+                  {!reduce ? (
+                    <circle
+                      data-node-pulse={node.id}
                       cx={point.x}
                       cy={point.y}
                       r={15}
                       fill="none"
                       stroke="rgba(226,112,58,0.7)"
                       strokeWidth="1"
-                      initial={{ scale: 1, opacity: 0.8 }}
-                      animate={{ scale: 2, opacity: 0 }}
-                      transition={{ duration: 1.4, ease: "easeOut" }}
-                      style={{
-                        originX: `${point.x}px`,
-                        originY: `${point.y}px`,
-                      }}
+                      opacity={0}
                     />
                   ) : null}
-                </motion.g>
+                </g>
               );
             })}
           </svg>
-        </motion.div>
+        </div>
 
         {/* centre label */}
         <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
@@ -456,22 +529,14 @@ export function RescueNetwork({
           <span className="text-ivory/30">/0{NODES.length}</span>
         </span>
         <div className="min-h-[3.1rem] flex-1">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeNode.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.3, ease: EASE }}
-            >
-              <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-ivory uppercase">
-                {activeNode.stat}
-              </p>
-              <p className="mt-1 text-[0.72rem] leading-relaxed text-ivory/55">
-                {activeNode.detail}
-              </p>
-            </motion.div>
-          </AnimatePresence>
+          <div ref={readoutRef}>
+            <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-ivory uppercase">
+              {activeNode.stat}
+            </p>
+            <p className="mt-1 text-[0.72rem] leading-relaxed text-ivory/55">
+              {activeNode.detail}
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
 import { Leaf, TrendingUp, Users, Utensils } from "lucide-react";
 import { PageHero, Panel, StatBlock } from "@/components/PageHero";
 import {
@@ -8,7 +8,9 @@ import {
 } from "@/components/ImpactChart";
 import { ImpactCounter } from "@/components/animations/ImpactCounter";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE, Reveal } from "@/components/animations/text";
+import { Reveal } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatNumber } from "@/lib/format";
 import { useDemo } from "@/store/demo";
 
@@ -45,6 +47,22 @@ const milestones = [
 
 export default function Impact() {
   const { stats, personal, rescuesThisSession, lastDelta } = useDemo();
+  const deltaRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  // Re-announces itself whenever a rescue adds a fresh delta.
+  useIsoLayoutEffect(() => {
+    const el = deltaRef.current;
+    if (!el || reduce) return;
+    const tween = gsap.fromTo(
+      el,
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.6, ease: EASE },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [lastDelta?.at, reduce]);
 
   const counters = [
     { value: stats.mealsRescued, label: "Meals rescued", icon: Utensils },
@@ -97,10 +115,8 @@ export default function Impact() {
       <section className="bg-forest-deep pb-24 text-ivory md:pb-32">
         <div className="shell">
           {lastDelta ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: EASE }}
+            <div
+              ref={deltaRef}
               className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-sm border border-ember/40 bg-ember/10 px-6 py-5"
             >
               <p className="text-[0.95rem] font-semibold">
@@ -110,7 +126,7 @@ export default function Impact() {
               <span className="label-xs text-ember">
                 Live demo state
               </span>
-            </motion.div>
+            </div>
           ) : null}
 
           <div className="grid gap-6 lg:grid-cols-12">
@@ -162,20 +178,17 @@ export default function Impact() {
             {counters.map((counter, index) => {
               const Icon = counter.icon;
               return (
-                <motion.div
-                  key={counter.label}
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-8% 0px" }}
-                  transition={{ duration: 0.8, ease: EASE, delay: index * 0.06 }}
-                  className="bg-forest-deep px-6 py-8"
-                >
-                  <Icon className="size-4 text-ember" />
-                  <p className="mt-5 text-[clamp(1.6rem,3.4vw,2.4rem)] leading-none font-extrabold tracking-[-0.045em]">
-                    <ImpactCounter value={counter.value} />
-                  </p>
-                  <p className="label-xs mt-3 text-ivory/45">{counter.label}</p>
-                </motion.div>
+                <Reveal key={counter.label} delay={index * 0.06}>
+                  <div className="bg-forest-deep px-6 py-8">
+                    <Icon className="size-4 text-ember" />
+                    <p className="mt-5 text-[clamp(1.6rem,3.4vw,2.4rem)] leading-none font-extrabold tracking-[-0.045em]">
+                      <ImpactCounter value={counter.value} />
+                    </p>
+                    <p className="label-xs mt-3 text-ivory/45">
+                      {counter.label}
+                    </p>
+                  </div>
+                </Reveal>
               );
             })}
           </div>
@@ -197,13 +210,7 @@ export default function Impact() {
               <div className="absolute top-2 left-0 h-px w-full bg-ivory/12" />
               <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
                 {milestones.map((milestone, index) => (
-                  <motion.div
-                    key={milestone.period}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-6% 0px" }}
-                    transition={{ duration: 0.8, ease: EASE, delay: index * 0.08 }}
-                  >
+                  <Reveal key={milestone.period} delay={index * 0.08} y={20}>
                     <span className="block size-4 rounded-full border border-ember bg-forest-deep" />
                     <p className="label-xs mt-5 text-ember">{milestone.period}</p>
                     <p className="mt-3 text-[1.15rem] font-extrabold tracking-[-0.02em] uppercase">
@@ -215,7 +222,7 @@ export default function Impact() {
                     <p className="mt-4 text-[0.85rem] font-semibold text-ivory/80">
                       {milestone.value}
                     </p>
-                  </motion.div>
+                  </Reveal>
                 ))}
               </div>
             </div>

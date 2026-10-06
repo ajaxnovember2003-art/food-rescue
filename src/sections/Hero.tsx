@@ -1,36 +1,24 @@
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { useEffect, useRef, type ReactNode } from "react";
 import { ArrowDown } from "lucide-react";
-import { useRef, type ReactNode } from "react";
 import { RescueNetwork } from "@/components/RescueNetwork";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { ImpactCounter } from "@/components/animations/ImpactCounter";
-import { EASE } from "@/components/animations/text";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { usePointerParallax } from "@/hooks/use-pointer";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { useDemo } from "@/store/demo";
 
 const LINE_ONE = "Good food";
 const LINE_TWO = "should never";
 const LINE_THREE = "go to waste";
 
-function HeroLine({
-  text,
-  delay,
-  children,
-}: {
-  text: string;
-  delay: number;
-  children?: ReactNode;
-}) {
+/** A masked hero line; the entrance timeline drives its rise. */
+function HeroLine({ text, children }: { text: string; children?: ReactNode }) {
   return (
     <span className="block overflow-hidden py-[0.02em]">
-      <motion.span
-        className="block will-change-transform"
-        initial={{ y: "112%", opacity: 0, filter: "blur(14px)" }}
-        animate={{ y: "0%", opacity: 1, filter: "blur(0px)" }}
-        transition={{ duration: 1.25, ease: EASE, delay }}
-      >
+      <span data-hero-line className="block will-change-transform">
         {children ?? text}
-      </motion.span>
+      </span>
     </span>
   );
 }
@@ -41,22 +29,128 @@ export function Hero() {
   const { stats } = useDemo();
   const pointer = usePointerParallax(sectionRef);
 
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
-  });
+  // Layer refs: background (pointer), glow (scroll), copy column (scroll) with
+  // an inner wrapper (pointer), network column (scroll) with an inner wrapper
+  // (pointer + entrance), and the bottom strip (scroll) with its own contents
+  // (entrance) — kept on separate elements so no two tweens fight over one
+  // transform.
+  const bgRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const copyColRef = useRef<HTMLDivElement>(null);
+  const copyInnerRef = useRef<HTMLDivElement>(null);
+  const netColRef = useRef<HTMLDivElement>(null);
+  const netInnerRef = useRef<HTMLDivElement>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
+  const leadRef = useRef<HTMLParagraphElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const stripInnerRef = useRef<HTMLDivElement>(null);
+  const arrowRef = useRef<HTMLSpanElement>(null);
 
-  const copyY = useTransform(scrollYProgress, [0, 1], ["0%", "-38%"]);
-  const copyOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
-  const networkY = useTransform(scrollYProgress, [0, 1], ["0%", "26%"]);
-  const networkScale = useTransform(scrollYProgress, [0, 1], [1, 1.28]);
-  const glowY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
+  // Hero entrance: one choreographed timeline that plays before first paint.
+  useIsoLayoutEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const ctx = gsap.context(() => {
+      if (reduce) return;
+      const tl = gsap.timeline();
+      tl.from(badgeRef, { opacity: 0, y: 14, duration: 0.9, ease: EASE }, 0.15)
+        .from(
+          "[data-hero-line]",
+          {
+            yPercent: 112,
+            opacity: 0,
+            filter: "blur(14px)",
+            duration: 1.25,
+            ease: EASE,
+            stagger: 0.12,
+          },
+          0.35,
+        )
+        .from(netInnerRef.current, {
+          opacity: 0,
+          scale: 0.9,
+          duration: 1.6,
+          ease: EASE,
+        }, 0.5)
+        .from(leadRef, { opacity: 0, y: 18, duration: 1, ease: EASE }, 0.9)
+        .from(ctaRef, { opacity: 0, y: 18, duration: 1, ease: EASE }, 1.05)
+        .from(statsRef, { opacity: 0, duration: 1, ease: EASE }, 1.25)
+        .from(stripInnerRef, { opacity: 0, duration: 1, ease: EASE }, 1.5);
 
-  const bgX = useTransform(pointer.x, (value) => value * 14);
-  const bgY = useTransform(pointer.y, (value) => value * 14);
-  const copyX = useTransform(pointer.x, (value) => value * -6);
-  const copyPy = useTransform(pointer.y, (value) => value * -6);
-  const netX = useTransform(pointer.x, (value) => value * -18);
+      if (arrowRef.current) {
+        gsap.to(arrowRef.current, {
+          y: 6,
+          duration: 1.1,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          delay: 2.2,
+        });
+      }
+    }, section);
+    return () => ctx.revert();
+  }, [reduce]);
+
+  // Scroll: the copy and strip lift away while the network expands toward the
+  // reader and the warm glow drifts down — one scrubbed timeline.
+  useIsoLayoutEffect(() => {
+    const section = sectionRef.current;
+    const copy = copyColRef.current;
+    const net = netColRef.current;
+    const strip = stripRef.current;
+    const glow = glowRef.current;
+    if (!section || !copy || !net || !strip || !glow) return;
+
+    const ctx = gsap.context(() => {
+      gsap
+        .timeline({
+          scrollTrigger: {
+            trigger: section,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        })
+        .to(copy, { yPercent: -38, ease: "none", duration: 1 }, 0)
+        .to([copy, strip], { opacity: 0, ease: "none", duration: 0.75 }, 0)
+        .to(net, { yPercent: 26, scale: 1.28, ease: "none", duration: 1 }, 0)
+        .to(glow, { yPercent: 18, ease: "none", duration: 1 }, 0);
+    }, section);
+    return () => ctx.revert();
+  }, []);
+
+  // Pointer depth: each layer tracks the shared pointer at its own multiplier.
+  useEffect(() => {
+    const bg = bgRef.current;
+    const copyInner = copyInnerRef.current;
+    const netInner = netInnerRef.current;
+    if (!bg || !copyInner || !netInner || reduce) return;
+
+    const bgX = gsap.quickTo(bg, "x", { duration: 0.7, ease: "power3.out" });
+    const bgY = gsap.quickTo(bg, "y", { duration: 0.7, ease: "power3.out" });
+    const copyX = gsap.quickTo(copyInner, "x", {
+      duration: 0.7,
+      ease: "power3.out",
+    });
+    const copyY = gsap.quickTo(copyInner, "y", {
+      duration: 0.7,
+      ease: "power3.out",
+    });
+    const netX = gsap.quickTo(netInner, "x", {
+      duration: 0.7,
+      ease: "power3.out",
+    });
+
+    return pointer.subscribe((x, y) => {
+      bgX(x * 14);
+      bgY(y * 14);
+      copyX(x * -6);
+      copyY(y * -6);
+      netX(x * -18);
+    });
+  }, [pointer, reduce]);
 
   return (
     <section
@@ -64,15 +158,8 @@ export function Hero() {
       className="grain relative flex min-h-[100svh] flex-col overflow-hidden bg-forest-deep pt-28 pb-16 text-ivory md:pt-32"
     >
       {/* layered background */}
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-[-10%]"
-        style={{ x: bgX, y: bgY }}
-      >
-        <motion.div
-          className="absolute inset-0"
-          style={{ y: glowY }}
-        >
+      <div ref={bgRef} aria-hidden="true" className="pointer-events-none absolute inset-[-10%]">
+        <div ref={glowRef} className="absolute inset-0">
           <div
             className="absolute inset-0"
             style={{
@@ -93,19 +180,14 @@ export function Hero() {
             </defs>
             <rect width="100%" height="100%" fill="url(#hero-grid)" />
           </svg>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       <div className="shell relative z-10 grid flex-1 items-center gap-14 lg:grid-cols-12 lg:gap-8">
-        <motion.div
-          className="lg:col-span-7"
-          style={{ y: copyY, opacity: copyOpacity }}
-        >
-          <motion.div style={{ x: copyX, y: copyPy }}>
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, ease: EASE, delay: 0.15 }}
+        <div ref={copyColRef} className="lg:col-span-7">
+          <div ref={copyInnerRef}>
+            <div
+              ref={badgeRef}
               className="flex flex-wrap items-center gap-3"
             >
               <span className="label-xs inline-flex items-center gap-2 rounded-full border border-ivory/20 px-3 py-1.5 text-ivory/70">
@@ -118,17 +200,17 @@ export function Hero() {
               <span className="label-xs text-ivory/40">
                 {stats.activeRescues} rescues in progress
               </span>
-            </motion.div>
+            </div>
 
             <h1 className="display-xl mt-8 text-ivory">
-              <HeroLine text={LINE_ONE} delay={0.35} />
-              <HeroLine text={LINE_TWO} delay={0.47}>
+              <HeroLine text={LINE_ONE} />
+              <HeroLine text={LINE_TWO}>
                 <span>
                   should{" "}
                   <span className="serif-i text-[1.12em]">never</span>
                 </span>
               </HeroLine>
-              <HeroLine text={LINE_THREE} delay={0.59}>
+              <HeroLine text={LINE_THREE}>
                 <span>
                   go to waste
                   <span className="text-ember">.</span>
@@ -136,22 +218,15 @@ export function Hero() {
               </HeroLine>
             </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, ease: EASE, delay: 0.9 }}
+            <p
+              ref={leadRef}
               className="mt-8 max-w-lg text-[1.02rem] leading-relaxed text-ivory/65"
             >
               FoodRescue connects surplus food with communities that need it —
               before good food becomes waste.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, ease: EASE, delay: 1.05 }}
-              className="mt-10 flex flex-wrap items-center gap-4"
-            >
+            <div ref={ctaRef} className="mt-10 flex flex-wrap items-center gap-4">
               <MagneticButton to="/donate" variant="ember" cursorLabel="DONATE">
                 Donate food
               </MagneticButton>
@@ -163,12 +238,10 @@ export function Hero() {
               >
                 Rescue food
               </MagneticButton>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1, ease: EASE, delay: 1.25 }}
+            <div
+              ref={statsRef}
               className="mt-14 flex items-center gap-6 border-t border-ivory/12 pt-6"
             >
               <div>
@@ -187,51 +260,38 @@ export function Hero() {
                   move.
                 </p>
               </div>
-            </motion.div>
-          </motion.div>
-        </motion.div>
+            </div>
+          </div>
+        </div>
 
-        <motion.div
-          className="relative lg:col-span-5"
-          style={{ y: networkY, scale: networkScale }}
-        >
-          <motion.div
-            style={{ x: netX }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.6, ease: EASE, delay: 0.5 }}
-            className="mx-auto w-full max-w-[460px] px-4 sm:px-0 lg:max-w-none lg:pl-8"
-          >
+        <div ref={netColRef} className="relative lg:col-span-5">
+          <div ref={netInnerRef} className="mx-auto w-full max-w-[460px] px-4 sm:px-0 lg:max-w-none lg:pl-8">
             <div className="mb-5 flex items-center gap-4">
               <span className="label-xs text-ivory/40">The rescue loop</span>
               <span className="h-px flex-1 bg-ivory/12" />
               <span className="label-xs text-ivory/40">Donor → impact</span>
             </div>
             <RescueNetwork parallax={pointer} />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5, duration: 1 }}
-        style={{ opacity: copyOpacity }}
-        className="shell relative z-10 mt-12 flex items-center justify-between gap-6 border-t border-ivory/10 pt-6"
+      <div
+        ref={stripRef}
+        className="shell relative z-10 mt-12 border-t border-ivory/10 pt-6"
       >
-        <span className="label-xs text-ivory/40">
-          Surplus → Rescue → Match → Pickup → Delivery → Impact
-        </span>
-        <span className="flex items-center gap-2 text-ivory/45">
-          <span className="label-xs hidden sm:block">Scroll the journey</span>
-          <motion.span
-            animate={reduce ? undefined : { y: [0, 6, 0] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <ArrowDown className="size-4" />
-          </motion.span>
-        </span>
-      </motion.div>
+        <div ref={stripInnerRef} className="flex items-center justify-between gap-6">
+          <span className="label-xs text-ivory/40">
+            Surplus → Rescue → Match → Pickup → Delivery → Impact
+          </span>
+          <span className="flex items-center gap-2 text-ivory/45">
+            <span className="label-xs hidden sm:block">Scroll the journey</span>
+            <span ref={arrowRef}>
+              <ArrowDown className="size-4" />
+            </span>
+          </span>
+        </div>
+      </div>
     </section>
   );
 }

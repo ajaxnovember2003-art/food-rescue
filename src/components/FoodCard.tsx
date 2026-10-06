@@ -1,11 +1,11 @@
-import { motion, type TargetAndTransition } from "framer-motion";
 import { MapPin, ShieldCheck, Timer } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { FoodImage } from "@/components/FoodImage";
 import { photoFor } from "@/data/photos";
 import { UrgencyBadge } from "@/components/StatusBadge";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, sharedImageRect, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { countdownLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { FoodListing } from "@/types";
@@ -36,27 +36,80 @@ export function FoodCard({
   size = "compact",
   index,
   className,
-  exit,
 }: {
   listing: FoodListing;
   size?: FoodCardSize;
   index?: number;
   className?: string;
-  exit?: TargetAndTransition;
 }) {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const hoverRef = useRef<gsap.core.Timeline | null>(null);
+  const reduce = useReducedMotion();
+
+  // Entrance: the card lifts into place as it scrolls in, once.
+  useIsoLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.from(card, {
+        opacity: 0,
+        y: 22,
+        duration: 0.75,
+        ease: EASE,
+        delay: (index ?? 0) * 0.05,
+        scrollTrigger: { trigger: card, start: "top 92%", once: true },
+      });
+    }, card);
+    return () => ctx.revert();
+  }, [index, reduce]);
+
+  // Hover: one paused timeline the pointer plays and reverses.
+  useIsoLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card || reduce) return;
+    const ctx = gsap.context(() => {
+      hoverRef.current = gsap
+        .timeline({ paused: true, defaults: { ease: EASE } })
+        .to(card, { y: -6, duration: 0.45, overwrite: "auto" }, 0)
+        .to("[data-card-image]", { scale: 1.06, duration: 0.7 }, 0)
+        .to(
+          "[data-card-area]",
+          { opacity: 0.45, y: -2, duration: 0.45 },
+          0,
+        )
+        .to("[data-card-cta]", { opacity: 1, x: 0, duration: 0.45 }, 0)
+        .to("[data-card-rule]", { width: 26, duration: 0.5 }, 0);
+    }, card);
+    return () => {
+      hoverRef.current = null;
+      ctx.revert();
+    };
+  }, [reduce]);
+
+  useIsoLayoutEffect(() => {
+    const tl = hoverRef.current;
+    if (!tl) return;
+    if (hovered) tl.timeScale(1).play();
+    else tl.timeScale(1.6).reverse();
+  }, [hovered]);
+
+  const open = () => {
+    const frame = frameRef.current;
+    if (frame) {
+      sharedImageRect.current = {
+        rect: frame.getBoundingClientRect(),
+        id: listing.id,
+      };
+    }
+    navigate(`/rescue/${listing.id}`);
+  };
 
   return (
-    <motion.article
-      layout
-      layoutId={`food-card-${listing.id}`}
-      initial={{ opacity: 0, y: 22 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-6% 0px" }}
-      exit={exit}
-      transition={{ duration: 0.75, ease: EASE, delay: (index ?? 0) * 0.05 }}
-      whileHover={{ y: -6, transition: { duration: 0.45, ease: EASE, delay: 0 } }}
+    <article
+      ref={cardRef}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
@@ -67,23 +120,19 @@ export function FoodCard({
         "group relative flex flex-col overflow-hidden rounded-sm border border-forest/12 bg-[#fffdf8] transition-colors duration-500 hover:border-forest/30",
         className,
       )}
-      onClick={() => navigate(`/rescue/${listing.id}`)}
+      onClick={open}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          navigate(`/rescue/${listing.id}`);
+          open();
         }
       }}
       tabIndex={0}
       role="link"
       aria-label={`${listing.name} from ${listing.donorName}, ${listing.servings} servings, ${countdownLabel(listing.minutesLeft)}`}
     >
-      <div className={cn("relative overflow-hidden", aspect[size])}>
-        <motion.div
-          className="absolute inset-0"
-          animate={{ scale: hovered ? 1.06 : 1 }}
-          transition={{ duration: 0.7, ease: EASE }}
-        >
+      <div ref={frameRef} className={cn("relative overflow-hidden", aspect[size])}>
+        <div data-card-image className="absolute inset-0">
           <FoodImage
             photo={photoFor(listing.id, listing.category)}
             category={listing.category}
@@ -91,7 +140,7 @@ export function FoodCard({
             seed={listing.servings}
             sizes="(max-width: 640px) 92vw, (max-width: 1024px) 48vw, 40vw"
           />
-        </motion.div>
+        </div>
 
         <div
           className="pointer-events-none absolute inset-0"
@@ -149,31 +198,27 @@ export function FoodCard({
 
         <div className="mt-auto pt-4">
           <div className="flex items-center justify-between gap-3 border-t border-forest/10 pt-3">
-            <motion.span
+            <span
+              data-card-area
               className="text-[0.62rem] font-semibold tracking-[0.18em] text-forest/50 uppercase"
-              initial={false}
-              animate={{ opacity: hovered ? 0.45 : 1, y: hovered ? -2 : 0 }}
-              transition={{ duration: 0.45, ease: EASE }}
             >
               {listing.pickupArea}
-            </motion.span>
-            <motion.span
+            </span>
+            <span
+              data-card-cta
               className="flex items-center gap-2 text-[0.62rem] font-semibold tracking-[0.18em] text-forest uppercase"
-              initial={false}
-              animate={{ opacity: hovered ? 1 : 0, x: hovered ? 0 : 10 }}
-              transition={{ duration: 0.45, ease: EASE }}
+              style={{ opacity: 0, transform: "translateX(10px)" }}
             >
               Rescue
-              <motion.span
+              <span
+                data-card-rule
                 className="block h-px bg-ember"
-                initial={false}
-                animate={{ width: hovered ? 26 : 10 }}
-                transition={{ duration: 0.5, ease: EASE }}
+                style={{ width: 10 }}
               />
-            </motion.span>
+            </span>
           </div>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }

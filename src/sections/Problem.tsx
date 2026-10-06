@@ -1,14 +1,10 @@
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from "framer-motion";
 import { useRef } from "react";
 import { FoodImage } from "@/components/FoodImage";
 import { photoAt, type FoodPhoto } from "@/data/photos";
-import { EASE, Reveal } from "@/components/animations/text";
+import { Reveal } from "@/components/animations/text";
+import { useRise } from "@/hooks/use-rise";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { problemFacts } from "@/data/mock";
 import type { FoodCategory } from "@/types";
 
@@ -45,24 +41,13 @@ const pile: Array<{
 function SurplusCard({
   item,
   index,
-  progress,
-  gridOpacity,
-  reduce,
 }: {
   item: (typeof pile)[number];
   index: number;
-  progress: MotionValue<number>;
-  gridOpacity: MotionValue<number>;
-  reduce: boolean | null;
 }) {
-  const y = useTransform(progress, [0, 0.7], [`${item.from.y}%`, "0%"]);
-  const x = useTransform(progress, [0, 0.7], [`${item.from.x}%`, "0%"]);
-  const rotate = useTransform(progress, [0, 0.7], [item.from.rotate, 0]);
-  const opacity = useTransform(progress, [0, 0.25, 1], [0.4, 1, 1]);
-
   return (
-    <motion.div
-      style={reduce ? undefined : { y, x, rotate, opacity }}
+    <div
+      data-surplus-card
       className="group relative overflow-hidden rounded-sm border border-forest/15 bg-[#fffdf8]"
     >
       <div className="aspect-[4/3] overflow-hidden">
@@ -78,31 +63,83 @@ function SurplusCard({
         <span className="text-[0.68rem] font-semibold tracking-[0.16em] text-forest/50 uppercase">
           {item.label}
         </span>
-        <motion.span
+        <span
+          data-problem-signal
           className="text-[0.68rem] font-semibold tracking-[0.16em] text-forest uppercase"
-          style={{ opacity: gridOpacity }}
         >
           Listed
-        </motion.span>
+        </span>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 /**
- * Waste becomes opportunity in one scroll: three surplus cards drift down as
+ * Waste becomes opportunity in one scroll: three surplus photos drift down as
  * loose debris and then lock into a structured rescue grid with metadata
- * attached. Motion values, not state, so the scrub stays at 60fps.
+ * attached. One gsap scrub timeline drives the settle; motion values stay off
+ * the React render path.
  */
 export function Problem() {
   const ref = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 80%", "end 60%"],
-  });
 
-  const gridOpacity = useTransform(scrollYProgress, [0.45, 0.75], [0, 1]);
+  useRise(headingRef, { stagger: 0.08, yPercent: 112, start: "top 88%" });
+
+  useIsoLayoutEffect(() => {
+    const container = ref.current;
+    if (!container) return;
+
+    const ctx = gsap.context(() => {
+      const signals = container.querySelectorAll("[data-problem-signal]");
+      // Metadata labels + the matched-in card fade up as the grid locks in.
+      gsap.fromTo(
+        signals,
+        { opacity: 0 },
+        {
+          opacity: 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container,
+            start: "top 55%",
+            end: "bottom 70%",
+            scrub: 0.4,
+          },
+        },
+      );
+
+      if (reduce) return;
+      const cards = container.querySelectorAll<HTMLElement>("[data-surplus-card]");
+      pile.forEach((item, index) => {
+        const card = cards[index];
+        if (!card) return;
+        gsap.fromTo(
+          card,
+          {
+            xPercent: item.from.x,
+            yPercent: item.from.y,
+            rotate: item.from.rotate,
+            opacity: 0.4,
+          },
+          {
+            xPercent: 0,
+            yPercent: 0,
+            rotate: 0,
+            opacity: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: container,
+              start: "top 80%",
+              end: "bottom 60%",
+              scrub: 0.6,
+            },
+          },
+        );
+      });
+    }, container);
+    return () => ctx.revert();
+  }, [reduce]);
 
   return (
     <section className="relative bg-ivory py-24 md:py-32">
@@ -111,39 +148,21 @@ export function Problem() {
           <Reveal>
             <span className="label-xs text-forest/45">02 — The problem</span>
           </Reveal>
-          <h2 className="display-lg mt-6 text-forest">
+          <h2 ref={headingRef} className="display-lg mt-6 text-forest">
             <span className="block overflow-hidden py-[0.02em]">
-              <motion.span
-                className="block"
-                initial={{ y: "112%" }}
-                whileInView={{ y: "0%" }}
-                viewport={{ once: true, margin: "-12% 0px" }}
-                transition={{ duration: 1.1, ease: EASE }}
-              >
+              <span data-rise className="block">
                 Every day,
-              </motion.span>
+              </span>
             </span>
             <span className="block overflow-hidden py-[0.02em]">
-              <motion.span
-                className="block"
-                initial={{ y: "112%" }}
-                whileInView={{ y: "0%" }}
-                viewport={{ once: true, margin: "-12% 0px" }}
-                transition={{ duration: 1.1, ease: EASE, delay: 0.08 }}
-              >
+              <span data-rise className="block">
                 good food
-              </motion.span>
+              </span>
             </span>
             <span className="block overflow-hidden py-[0.02em]">
-              <motion.span
-                className="block text-ember"
-                initial={{ y: "112%" }}
-                whileInView={{ y: "0%" }}
-                viewport={{ once: true, margin: "-12% 0px" }}
-                transition={{ duration: 1.1, ease: EASE, delay: 0.16 }}
-              >
+              <span data-rise className="block text-ember">
                 becomes waste.
-              </motion.span>
+              </span>
             </span>
           </h2>
 
@@ -178,12 +197,9 @@ export function Problem() {
         <div ref={ref} className="relative lg:col-span-7">
           <div className="flex items-end justify-between">
             <span className="label-xs text-forest/45">Surplus today</span>
-            <motion.span
-              className="label-xs text-ember"
-              style={{ opacity: gridOpacity }}
-            >
+            <span data-problem-signal className="label-xs text-ember">
               Rescue opportunities
-            </motion.span>
+            </span>
           </div>
 
           {/* loose photos that settle into a structured rescue grid — the
@@ -191,18 +207,11 @@ export function Problem() {
           <div className="relative mt-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {pile.map((item, index) => (
-                <SurplusCard
-                  key={item.category}
-                  item={item}
-                  index={index}
-                  progress={scrollYProgress}
-                  gridOpacity={gridOpacity}
-                  reduce={reduce}
-                />
+                <SurplusCard key={item.category} item={item} index={index} />
               ))}
-              <motion.div
-                style={{ opacity: gridOpacity }}
-                className="relative flex flex-col justify-between overflow-hidden rounded-sm border border-forest bg-forest p-5 text-ivory"
+              <div
+                data-problem-signal
+                className="relative flex flex-col justify-between overflow-hidden rounded-sm border border-forest bg-forest p-5 text-ivory opacity-0"
               >
                 <span className="label-xs text-ivory/50">Matched in</span>
                 <span className="text-[clamp(2.2rem,5vw,3.4rem)] leading-none font-extrabold tracking-[-0.05em]">
@@ -212,7 +221,7 @@ export function Problem() {
                   Average time from listing to a volunteer accepting the pickup
                   in our pilot cities.
                 </p>
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>

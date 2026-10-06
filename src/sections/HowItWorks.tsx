@@ -1,5 +1,7 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
 import { EASE } from "@/components/animations/text";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { howItWorks } from "@/data/mock";
 
 /**
@@ -8,6 +10,26 @@ import { howItWorks } from "@/data/mock";
  * the route, and the line draws ember on hover.
  */
 export function HowItWorks() {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  useIsoLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || reduce) return;
+    const steps = grid.querySelectorAll<HTMLElement>("[data-step]");
+    const ctx = gsap.context(() => {
+      gsap.from(steps, {
+        opacity: 0,
+        y: 20,
+        duration: 0.8,
+        ease: EASE,
+        stagger: 0.08,
+        scrollTrigger: { trigger: grid, start: "top 85%", once: true },
+      });
+    }, grid);
+    return () => ctx.revert();
+  }, [reduce]);
+
   return (
     <section
       id="how-it-works"
@@ -29,14 +51,11 @@ export function HowItWorks() {
         </div>
 
         <div className="mt-14">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+          <div ref={gridRef} className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
             {howItWorks.map((step, index) => (
-              <motion.div
+              <div
                 key={step.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-6% 0px" }}
-                transition={{ duration: 0.8, ease: EASE, delay: index * 0.08 }}
+                data-step
                 data-cursor="hover"
                 className="group relative border-t border-forest/15 pt-7"
               >
@@ -57,7 +76,7 @@ export function HowItWorks() {
                 <p className="mt-3 max-w-xs text-[0.85rem] leading-relaxed text-forest/65">
                   {step.body}
                 </p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

@@ -1,5 +1,6 @@
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 
 /**
  * The seam between the dark hero and the editorial half of the page. The
@@ -10,14 +11,42 @@ import { useRef } from "react";
  */
 export function HeroBridge() {
   const ref = useRef<HTMLDivElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
+  const parcelRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
 
-  const fillScale = useTransform(scrollYProgress, [0.08, 0.72], [0, 1]);
-  const parcelTop = useTransform(scrollYProgress, [0.08, 0.72], ["0%", "100%"]);
+  useIsoLayoutEffect(() => {
+    const section = ref.current;
+    const fill = fillRef.current;
+    const parcel = parcelRef.current;
+    if (!section || !fill || !parcel) return;
+
+    if (reduce) {
+      gsap.set(fill, { scaleY: 1 });
+      gsap.set(parcel, { top: "100%" });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap
+        .timeline({
+          scrollTrigger: {
+            trigger: section,
+            start: "top 90%",
+            end: "bottom 60%",
+            scrub: 0.4,
+          },
+        })
+        .fromTo(
+          fill,
+          { scaleY: 0, transformOrigin: "50% 0%" },
+          { scaleY: 1, ease: "none" },
+          0,
+        )
+        .fromTo(parcel, { top: "0%" }, { top: "100%", ease: "none" }, 0);
+    }, section);
+    return () => ctx.revert();
+  }, [reduce]);
 
   return (
     <div
@@ -52,19 +81,16 @@ export function HeroBridge() {
 
       {/* the route completing itself */}
       <div className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-ivory/15" />
-      <motion.div
-        className="absolute top-0 bottom-0 left-1/2 w-px origin-top -translate-x-1/2 bg-ember"
-        style={reduce ? undefined : { scaleY: fillScale }}
+      <div
+        ref={fillRef}
+        className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-ember"
       />
-      <motion.div
-        className="absolute left-1/2 -translate-x-1/2"
-        style={reduce ? { top: "100%" } : { top: parcelTop }}
-      >
-        <div className="-mt-2 h-4 w-5 -translate-x-0 rounded-[2px] border border-forest/25 bg-ivory">
+      <div ref={parcelRef} className="absolute left-1/2 -translate-x-1/2">
+        <div className="-mt-2 h-4 w-5 rounded-[2px] border border-forest/25 bg-ivory">
           <div className="mt-1.5 h-px w-full bg-forest/30" />
           <div className="mx-auto mt-1 size-[3px] rounded-full bg-ember" />
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

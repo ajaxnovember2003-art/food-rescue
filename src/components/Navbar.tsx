@@ -1,12 +1,12 @@
-import { motion, useMotionValueEvent, useScroll } from "framer-motion";
 import { Menu } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { Logo } from "@/components/Logo";
 import { MagneticButton } from "@/components/animations/MagneticButton";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { primaryNav } from "@/data/nav";
 import { cn } from "@/lib/utils";
-import { EASE } from "@/components/animations/text";
 
 /**
  * Transparent over the hero, and — once the page moves — a compact floating
@@ -19,24 +19,40 @@ export function Navbar({
   tone?: "dark" | "light";
   onOpenMenu: () => void;
 }) {
-  const { scrollY } = useScroll();
+  const headerRef = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
   const [compact, setCompact] = useState(false);
   const { pathname } = useLocation();
 
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    setCompact(latest > 56);
-  });
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 56);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Entrance: the bar drops in once, before the first paint.
+  useIsoLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.from(header, {
+        y: -24,
+        opacity: 0,
+        duration: 0.9,
+        ease: EASE,
+        delay: 0.15,
+        clearProps: "transform,opacity",
+      });
+    }, header);
+    return () => ctx.revert();
+  }, [reduce]);
 
   const overHero = !compact;
   const light = overHero && tone === "dark";
 
   return (
-    <motion.header
-      className="fixed top-0 left-0 z-[70] w-full"
-      initial={{ y: -24, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.9, ease: EASE, delay: 0.15 }}
-    >
+    <header ref={headerRef} className="fixed top-0 left-0 z-[70] w-full">
       <div
         className={cn(
           "mx-auto flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]",
@@ -101,6 +117,6 @@ export function Navbar({
           </button>
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 }

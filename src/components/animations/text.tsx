@@ -1,22 +1,29 @@
-import { motion, type Variants } from "framer-motion";
-import type { ElementType, ReactNode } from "react";
+import { useRef, type ElementType, type ReactNode, type Ref } from "react";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useRise } from "@/hooks/use-rise";
+import {
+  EASE as GSAP_EASE,
+  EASE_IN_OUT as GSAP_EASE_IN_OUT,
+  gsap,
+  useIsoLayoutEffect,
+} from "@/lib/gsap";
 import { cn } from "@/lib/utils";
 
-export const EASE = [0.16, 1, 0.3, 1] as const;
-export const EASE_IN_OUT = [0.65, 0.01, 0.27, 1] as const;
+/** Public easing constants (gsap ease strings), stable import path. */
+export const EASE: "expo.out" = GSAP_EASE;
+export const EASE_IN_OUT: "power3.inOut" = GSAP_EASE_IN_OUT;
 
-const lineVariants: Variants = {
-  hidden: { y: "118%", opacity: 0 },
-  visible: (i: number) => ({
-    y: "0%",
-    opacity: 1,
-    transition: { duration: 1.05, ease: EASE, delay: 0.05 * i },
-  }),
+/** Props a polymorphic tag must accept for the masked primitives. */
+type TagProps = {
+  className?: string;
+  ref?: Ref<HTMLElement>;
+  children?: ReactNode;
 };
 
 /**
  * Masked line-by-line reveal. Each line slides up from behind a clipping mask,
- * which reads as editorial typography rather than a generic fade-in.
+ * which reads as editorial typography rather than a generic fade-in — now
+ * driven by a gsap from-tween + ScrollTrigger.
  */
 export function RevealLines({
   lines,
@@ -33,23 +40,29 @@ export function RevealLines({
   delay?: number;
   once?: boolean;
 }) {
+  const ref = useRef<HTMLElement>(null);
+  useRise(ref, {
+    delay: delay * 0.05,
+    stagger: 0.05,
+    duration: 1.05,
+    yPercent: 118,
+    start: "top 88%",
+    once,
+  });
+  const Polymorphic = Tag as ElementType<TagProps>;
   return (
-    <Tag className={className}>
+    <Polymorphic className={className} ref={ref}>
       {lines.map((line, index) => (
         <span key={line + index} className="block overflow-hidden py-[0.06em]">
-          <motion.span
-            custom={index + delay}
-            variants={lineVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once, margin: "-12% 0px -10% 0px" }}
+          <span
+            data-rise
             className={cn("block will-change-transform", lineClassName)}
           >
             {line}
-          </motion.span>
+          </span>
         </span>
       ))}
-    </Tag>
+    </Polymorphic>
   );
 }
 
@@ -72,35 +85,32 @@ export function AnimatedWords({
   stagger?: number;
   once?: boolean;
 }) {
+  const ref = useRef<HTMLElement>(null);
+  useRise(ref, {
+    delay,
+    stagger,
+    duration: 0.9,
+    yPercent: 110,
+    blur: 8,
+    start: "top 90%",
+    once,
+  });
+  const Polymorphic = Tag as ElementType<TagProps>;
   const words = text.split(" ");
   return (
-    <Tag className={className}>
+    <Polymorphic className={className} ref={ref}>
       {words.map((word, index) => (
         <span
           key={`${word}-${index}`}
           className="inline-block overflow-hidden align-bottom"
         >
-          <motion.span
-            className="inline-block will-change-transform"
-            initial={{ y: "110%", opacity: 0, filter: "blur(8px)" }}
-            whileInView={{
-              y: "0%",
-              opacity: 1,
-              filter: "blur(0px)",
-            }}
-            viewport={{ once, margin: "-10% 0px" }}
-            transition={{
-              duration: 0.9,
-              ease: EASE,
-              delay: delay + index * stagger,
-            }}
-          >
+          <span data-rise className="inline-block will-change-transform">
             {word}
-          </motion.span>
+          </span>
           {index < words.length - 1 ? <span>&nbsp;</span> : null}
         </span>
       ))}
-    </Tag>
+    </Polymorphic>
   );
 }
 
@@ -118,16 +128,29 @@ export function Reveal({
   delay?: number;
   once?: boolean;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  useIsoLayoutEffect(() => {
+    const element = ref.current;
+    if (!element || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.from(element, {
+        opacity: 0,
+        y,
+        duration: 0.95,
+        ease: EASE,
+        delay,
+        scrollTrigger: { trigger: element, start: "top 92%", once },
+      });
+    }, element);
+    return () => ctx.revert();
+  }, [y, delay, once, reduce]);
+
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once, margin: "-8% 0px -8% 0px" }}
-      transition={{ duration: 0.95, ease: EASE, delay }}
-    >
+    <div ref={ref} className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -139,18 +162,33 @@ export function DrawRule({
   className?: string;
   dark?: boolean;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  useIsoLayoutEffect(() => {
+    const element = ref.current;
+    if (!element || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.from(element, {
+        scaleX: 0,
+        transformOrigin: "left center",
+        duration: 1.2,
+        ease: EASE,
+        scrollTrigger: { trigger: element, start: "top 95%", once: true },
+      });
+    }, element);
+    return () => ctx.revert();
+  }, [reduce]);
+
   return (
-    <motion.div
+    <div
+      ref={ref}
       className={cn("h-px w-full origin-left", className)}
       style={{
         backgroundColor: dark
           ? "rgba(246,241,230,0.22)"
           : "rgba(11,43,34,0.18)",
       }}
-      initial={{ scaleX: 0 }}
-      whileInView={{ scaleX: 1 }}
-      viewport={{ once: true, margin: "-5% 0px" }}
-      transition={{ duration: 1.2, ease: EASE }}
     />
   );
 }

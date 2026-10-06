@@ -1,8 +1,10 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { DemoControl } from "@/components/DemoControl";
-import { EASE } from "@/components/animations/text";
+import { Reveal } from "@/components/animations/text";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { photoCredits } from "@/data/photos";
 
 const columns = [
@@ -37,14 +39,30 @@ const marquee = [
 ];
 
 export function Footer() {
+  const reduce = useReducedMotion();
+  const marqueeRef = useRef<HTMLDivElement>(null);
+
+  useIsoLayoutEffect(() => {
+    const element = marqueeRef.current;
+    if (!element || reduce) return;
+    const tween = gsap.to(element, {
+      xPercent: -50,
+      duration: 26,
+      ease: "none",
+      repeat: -1,
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [reduce]);
+
   return (
     <footer className="relative overflow-hidden bg-forest-deep pt-16 text-ivory">
       <div className="border-y border-ivory/10 py-5">
         <div className="flex overflow-hidden">
-          <motion.div
+          <div
+            ref={marqueeRef}
             className="flex shrink-0 items-center gap-10 pr-10"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: 26, ease: "linear", repeat: Infinity }}
           >
             {[...marquee, ...marquee, ...marquee, ...marquee].map(
               (word, index) => (
@@ -57,7 +75,7 @@ export function Footer() {
                 </span>
               ),
             )}
-          </motion.div>
+          </div>
         </div>
       </div>
 
@@ -109,17 +127,11 @@ export function Footer() {
         </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 1, ease: EASE }}
-        className="shell"
-      >
+      <Reveal className="shell" y={24}>
         <p className="w-full text-center text-[clamp(2.5rem,13vw,11rem)] leading-[0.8] font-extrabold tracking-[-0.05em] text-ivory/8 uppercase select-none">
           FoodRescue
         </p>
-      </motion.div>
+      </Reveal>
 
       <div className="shell mt-6 flex flex-col gap-4 border-t border-ivory/10 py-8 text-[0.72rem] text-ivory/45 md:flex-row md:items-center md:justify-between">
         <p>© {new Date().getFullYear()} FoodRescue — concept product.</p>

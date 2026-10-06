@@ -1,10 +1,12 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { FoodImage } from "@/components/FoodImage";
 import { communityPhoto } from "@/data/photos";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { SectionHeading } from "@/components/SectionHeading";
 import { EASE, Reveal } from "@/components/animations/text";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { people } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +22,25 @@ const badgeTone: Record<string, string> = {
  */
 export function CommunitySection() {
   const featured = people.slice(0, 6);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  useIsoLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || reduce) return;
+    const cards = grid.querySelectorAll<HTMLElement>("[data-person]");
+    const ctx = gsap.context(() => {
+      gsap.from(cards, {
+        opacity: 0,
+        y: 22,
+        duration: 0.8,
+        ease: EASE,
+        stagger: 0.06,
+        scrollTrigger: { trigger: grid, start: "top 85%", once: true },
+      });
+    }, grid);
+    return () => ctx.revert();
+  }, [reduce]);
 
   return (
     <section className="relative bg-ivory py-24 md:py-32">
@@ -69,14 +90,14 @@ export function CommunitySection() {
           </div>
         </Reveal>
 
-        <div className="mt-8 grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((person, index) => (
-            <motion.article
+        <div
+          ref={gridRef}
+          className="mt-8 grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {featured.map((person) => (
+            <article
               key={person.id}
-              initial={{ opacity: 0, y: 22 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-6% 0px" }}
-              transition={{ duration: 0.8, ease: EASE, delay: index * 0.06 }}
+              data-person
               data-cursor="hover"
               className="group relative bg-[#fffdf8] p-6 transition-colors duration-500 hover:bg-sand/60"
             >
@@ -114,7 +135,7 @@ export function CommunitySection() {
               </p>
 
               <ArrowUpRight className="absolute right-6 bottom-6 size-4 -translate-x-2 text-forest/40 opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100" />
-            </motion.article>
+            </article>
           ))}
         </div>
 

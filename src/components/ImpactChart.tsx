@@ -1,4 +1,3 @@
-import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import {
   Area,
@@ -8,7 +7,9 @@ import {
   Tooltip,
   XAxis,
 } from "recharts";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useInView } from "@/hooks/use-in-view";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { rescueTrend } from "@/data/mock";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -110,6 +111,27 @@ export function ImpactRing({
   const radius = size / 2 - 14;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(1, value / max);
+  const ringRef = useRef<SVGCircleElement>(null);
+
+  // The arc sweeps to its value once the ring is in view.
+  useIsoLayoutEffect(() => {
+    const el = ringRef.current;
+    if (!el) return;
+    const target = circumference * (1 - progress);
+    if (reduce) {
+      gsap.set(el, { strokeDashoffset: target });
+      return;
+    }
+    if (!inView) return;
+    const tween = gsap.fromTo(
+      el,
+      { strokeDashoffset: circumference },
+      { strokeDashoffset: target, duration: 2, ease: EASE },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [inView, reduce, circumference, progress]);
 
   return (
     <div
@@ -126,7 +148,8 @@ export function ImpactRing({
           stroke="rgba(246,241,230,0.14)"
           strokeWidth="2"
         />
-        <motion.circle
+        <circle
+          ref={ringRef}
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -135,16 +158,7 @@ export function ImpactRing({
           strokeWidth="2"
           strokeLinecap="round"
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{
-            strokeDashoffset: inView
-              ? circumference * (1 - progress)
-              : circumference,
-          }}
-          transition={{
-            duration: reduce ? 0 : 2,
-            ease: EASE,
-          }}
+          strokeDashoffset={circumference}
         />
         <circle
           cx={size / 2}
@@ -169,6 +183,29 @@ export function ImpactRing({
 
 /** Horizontal bar list — lighter than a chart for category splits. */
 export function CategoryBars({ className }: { className?: string }) {
+  const rootRef = useRef<HTMLUListElement>(null);
+  const reduce = useReducedMotion();
+
+  useIsoLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.utils
+        .toArray<HTMLElement>("[data-cat-bar]", root)
+        .forEach((el, index) => {
+          gsap.from(el, {
+            scaleX: 0,
+            transformOrigin: "left center",
+            duration: 1.1,
+            ease: EASE,
+            delay: index * 0.08,
+            scrollTrigger: { trigger: root, start: "top 88%", once: true },
+          });
+        });
+    }, root);
+    return () => ctx.revert();
+  }, [reduce]);
+
   const bars = [
     { label: "Meals", value: 46, color: "#0b2b22" },
     { label: "Bakery", value: 19, color: "#e2703a" },
@@ -178,21 +215,21 @@ export function CategoryBars({ className }: { className?: string }) {
   ];
 
   return (
-    <ul className={cn("space-y-4", className)}>
-      {bars.map((bar, index) => (
+    <ul ref={rootRef} className={cn("space-y-4", className)}>
+      {bars.map((bar) => (
         <li key={bar.label}>
           <div className="flex items-baseline justify-between text-[0.78rem]">
             <span className="text-ivory/70">{bar.label}</span>
             <span className="font-semibold text-ivory/50">{bar.value}%</span>
           </div>
           <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-ivory/12">
-            <motion.div
+            <div
+              data-cat-bar
               className="h-full origin-left rounded-full"
-              style={{ backgroundColor: bar.color }}
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: bar.value / 50 }}
-              viewport={{ once: true, margin: "-8% 0px" }}
-              transition={{ duration: 1.1, ease: EASE, delay: index * 0.08 }}
+              style={{
+                backgroundColor: bar.color,
+                transform: `scaleX(${bar.value / 50})`,
+              }}
             />
           </div>
         </li>

@@ -1,12 +1,9 @@
-import { motion } from "framer-motion";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useEffect, useRef, useState } from "react";
 import { EASE, Reveal } from "@/components/animations/text";
+import { useRise } from "@/hooks/use-rise";
+import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 import { rescueJourney } from "@/data/mock";
 import { cn } from "@/lib/utils";
-
-gsap.registerPlugin(ScrollTrigger);
 
 /** Station names come straight from the journey, so the track, dots and the
  *  columns below all describe the same five states. */
@@ -20,6 +17,8 @@ const stations = rescueJourney.map((item) => item.title);
  */
 export function RescueStory() {
   const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const columnsRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
@@ -32,6 +31,42 @@ export function RescueStory() {
       ).matches,
   );
   const stageRef = useRef(0);
+
+  useRise(headingRef, { stagger: 0.08, yPercent: 112, start: "top 88%" });
+
+  // Stage bodies: gsap owns their height/opacity after a pre-paint init, so
+  // React re-renders on stage changes never fight an inline style.
+  useIsoLayoutEffect(() => {
+    const columns = columnsRef.current;
+    if (!columns) return;
+    const bodies = columns.querySelectorAll<HTMLElement>("[data-stage-body]");
+    bodies.forEach((body, index) => {
+      gsap.set(
+        body,
+        pinned
+          ? index === stageRef.current
+            ? { height: "auto", opacity: 1 }
+            : { height: 0, opacity: 0.35 }
+          : { height: "auto", opacity: 1 },
+      );
+    });
+  }, [pinned]);
+
+  useEffect(() => {
+    const columns = columnsRef.current;
+    if (!columns) return;
+    const bodies = columns.querySelectorAll<HTMLElement>("[data-stage-body]");
+    bodies.forEach((body, index) => {
+      const active = pinned ? index === stage : true;
+      gsap.to(body, {
+        height: active ? "auto" : 0,
+        opacity: active ? 1 : 0.35,
+        duration: 0.6,
+        ease: EASE,
+        overwrite: "auto",
+      });
+    });
+  }, [stage, pinned]);
 
   useEffect(() => {
     const mm = gsap.matchMedia();
@@ -114,28 +149,16 @@ export function RescueStory() {
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <span className="label-xs text-ivory/45">04 — The rescue story</span>
-            <h2 className="display-lg mt-6 text-ivory">
+            <h2 ref={headingRef} className="display-lg mt-6 text-ivory">
               <span className="block overflow-hidden py-[0.02em]">
-                <motion.span
-                  className="block"
-                  initial={{ y: "112%" }}
-                  whileInView={{ y: "0%" }}
-                  viewport={{ once: true, margin: "-10% 0px" }}
-                  transition={{ duration: 1.1, ease: EASE }}
-                >
+                <span data-rise className="block">
                   From surplus
-                </motion.span>
+                </span>
               </span>
               <span className="block overflow-hidden py-[0.02em]">
-                <motion.span
-                  className="block"
-                  initial={{ y: "112%" }}
-                  whileInView={{ y: "0%" }}
-                  viewport={{ once: true, margin: "-10% 0px" }}
-                  transition={{ duration: 1.1, ease: EASE, delay: 0.08 }}
-                >
+                <span data-rise className="block">
                   to support<span className="text-ember">.</span>
-                </motion.span>
+                </span>
               </span>
             </h2>
           </div>
@@ -191,7 +214,7 @@ export function RescueStory() {
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-5 gap-6 border-t border-ivory/12 pt-8">
+          <div ref={columnsRef} className="mt-10 grid grid-cols-5 gap-6 border-t border-ivory/12 pt-8">
             {rescueJourney.map((item, index) => {
               const active = pinned ? index === stage : true;
               return (
@@ -218,19 +241,11 @@ export function RescueStory() {
                   >
                     {item.title}
                   </span>
-                  <motion.span
-                    initial={false}
-                    animate={{
-                      opacity: active ? 1 : 0.35,
-                      height: active ? "auto" : 0,
-                    }}
-                    transition={{ duration: 0.6, ease: EASE }}
-                    className="block overflow-hidden"
-                  >
+                  <span data-stage-body className="block overflow-hidden">
                     <span className="mt-3 block text-[0.82rem] leading-relaxed text-ivory/65">
                       {item.body}
                     </span>
-                  </motion.span>
+                  </span>
                   <span
                     className={cn(
                       "mt-3 block text-[0.72rem] transition-colors duration-500",

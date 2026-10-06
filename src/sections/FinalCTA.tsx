@@ -1,6 +1,9 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { Reveal } from "@/components/animations/text";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useRise } from "@/hooks/use-rise";
+import { gsap } from "@/lib/gsap";
 import { useDemo } from "@/store/demo";
 
 const words = ["One meal", "can make", "a difference."];
@@ -12,6 +15,25 @@ const words = ["One meal", "can make", "a difference."];
 export function FinalCTA() {
   const reduce = useReducedMotion();
   const { stats } = useDemo();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const diamondRef = useRef<HTMLSpanElement>(null);
+
+  useRise(headingRef, { stagger: 0.1, yPercent: 112, start: "top 90%" });
+
+  // The ember marker runs the baseline forever — unless motion is reduced.
+  useEffect(() => {
+    const diamond = diamondRef.current;
+    if (!diamond || reduce) return;
+    const tween = gsap.to(diamond, {
+      left: "100%",
+      duration: 9,
+      repeat: -1,
+      ease: "none",
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [reduce]);
 
   return (
     <section className="relative overflow-hidden bg-forest py-28 text-ivory md:py-40">
@@ -27,20 +49,10 @@ export function FinalCTA() {
       <div className="shell relative text-center">
         <span className="label-xs text-ivory/45">12 — Join in</span>
 
-        <h2 className="display-xl mt-8 text-ivory">
+        <h2 ref={headingRef} className="display-xl mt-8 text-ivory">
           {words.map((line, index) => (
             <span key={line} className="block overflow-hidden py-[0.02em]">
-              <motion.span
-                className="block"
-                initial={{ y: "112%" }}
-                whileInView={{ y: "0%" }}
-                viewport={{ once: true, margin: "-10% 0px" }}
-                transition={{
-                  duration: 1.2,
-                  ease: [0.16, 1, 0.3, 1],
-                  delay: index * 0.1,
-                }}
-              >
+              <span data-rise className="block">
                 {index === 2 ? (
                   <>
                     a difference<span className="text-ember">.</span>
@@ -48,7 +60,7 @@ export function FinalCTA() {
                 ) : (
                   line
                 )}
-              </motion.span>
+              </span>
             </span>
           ))}
         </h2>
@@ -77,10 +89,9 @@ export function FinalCTA() {
         </Reveal>
 
         <div className="relative mt-20 h-px w-full bg-ivory/12">
-          <motion.span
+          <span
+            ref={diamondRef}
             className="absolute -top-[5px] left-0 size-3 rotate-45 bg-ember"
-            animate={reduce ? undefined : { left: ["0%", "100%"] }}
-            transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
           />
         </div>
 

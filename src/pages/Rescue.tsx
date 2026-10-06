@@ -1,10 +1,12 @@
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { FoodCard, type FoodCardSize } from "@/components/FoodCard";
 import { PageHero } from "@/components/PageHero";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE } from "@/components/animations/text";
+import { Reveal } from "@/components/animations/text";
+import { flipChildren } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useSlidingPill } from "@/hooks/use-sliding-pill";
 import { useDemo } from "@/store/demo";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,9 @@ function shapeFor(index: number): { size: FoodCardSize; span: string } {
 export default function Rescue() {
   const { listings } = useDemo();
   const [filter, setFilter] = useState<FilterId>("all");
+  const gridRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { groupRef, pillRef } = useSlidingPill(filter);
 
   const filtered = useMemo(() => {
     if (filter === "all") return listings;
@@ -44,6 +49,17 @@ export default function Rescue() {
 
   const totalServings = filtered.reduce((sum, item) => sum + item.servings, 0);
 
+  // Changing the filter reflows the grid: gsap FLIPs the surviving cards into
+  // their new slots while new ones rise in, replacing framer's layout group.
+  const changeFilter = (next: FilterId) => {
+    const grid = gridRef.current;
+    if (!grid || reduce) {
+      setFilter(next);
+      return;
+    }
+    flipChildren(grid, () => setFilter(next));
+  };
+
   return (
     <>
       <PageHero
@@ -54,10 +70,17 @@ export default function Rescue() {
       >
         <div className="flex flex-col gap-6 border-t border-forest/12 pt-6 lg:flex-row lg:items-center lg:justify-between">
           <div
-            className="flex flex-wrap items-center gap-2"
+            ref={groupRef}
+            className="relative flex flex-wrap items-center gap-2"
             role="group"
             aria-label="Filter listings"
           >
+            <span
+              ref={pillRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-0 left-0 rounded-full bg-forest"
+              style={{ opacity: 0 }}
+            />
             <span className="mr-2 hidden items-center gap-2 text-forest/40 sm:flex">
               <SlidersHorizontal className="size-3.5" />
             </span>
@@ -67,7 +90,8 @@ export default function Rescue() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setFilter(item.id)}
+                  data-pill={item.id}
+                  onClick={() => changeFilter(item.id)}
                   aria-pressed={active}
                   data-cursor="hover"
                   className={cn(
@@ -77,13 +101,6 @@ export default function Rescue() {
                       : "border-forest/18 text-forest/60 hover:border-forest/40 hover:text-forest",
                   )}
                 >
-                  {active ? (
-                    <motion.span
-                      layoutId="filter-pill"
-                      className="absolute inset-0 rounded-full bg-forest"
-                      transition={{ type: "spring", stiffness: 320, damping: 30 }}
-                    />
-                  ) : null}
                   <span className="relative z-10">{item.label}</span>
                 </button>
               );
@@ -102,36 +119,26 @@ export default function Rescue() {
 
       <section className="bg-ivory pb-28">
         <div className="shell">
-          <LayoutGroup>
-            <motion.div
-              layout
-              className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              <AnimatePresence mode="popLayout">
-                {filtered.map((listing, index) => {
-                  const shape = shapeFor(index);
-                  return (
-                    <FoodCard
-                      key={listing.id}
-                      listing={listing}
-                      size={shape.size}
-                      index={index}
-                      className={shape.span}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                    />
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
-          </LayoutGroup>
+          <div
+            ref={gridRef}
+            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {filtered.map((listing, index) => {
+              const shape = shapeFor(index);
+              return (
+                <FoodCard
+                  key={listing.id}
+                  listing={listing}
+                  size={shape.size}
+                  index={index}
+                  className={shape.span}
+                />
+              );
+            })}
+          </div>
 
           {filtered.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: EASE }}
-              className="rounded-sm border border-forest/15 bg-[#fffdf8] px-6 py-16 text-center"
-            >
+            <Reveal className="rounded-sm border border-forest/15 bg-[#fffdf8] px-6 py-16 text-center">
               <p className="display-md text-forest">Nothing in this category yet.</p>
               <p className="mx-auto mt-4 max-w-md text-[0.9rem] leading-relaxed text-forest/60">
                 Every listing in the pilot network has been matched. Clear the
@@ -141,7 +148,7 @@ export default function Rescue() {
                 <MagneticButton
                   variant="outline"
                   size="sm"
-                  onClick={() => setFilter("all")}
+                  onClick={() => changeFilter("all")}
                 >
                   Show all listings
                 </MagneticButton>
@@ -149,7 +156,7 @@ export default function Rescue() {
                   Donate food
                 </MagneticButton>
               </div>
-            </motion.div>
+            </Reveal>
           ) : null}
 
           <div className="mt-14 flex flex-col gap-6 border-t border-forest/12 pt-8 sm:flex-row sm:items-center sm:justify-between">

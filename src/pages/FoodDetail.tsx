@@ -1,5 +1,4 @@
-import { motion } from "framer-motion";
-import { Fragment } from "react";
+import { Fragment, useRef, useState } from "react";
 import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useNavigate, useParams } from "react-router";
@@ -9,7 +8,9 @@ import { FoodCard } from "@/components/FoodCard";
 import { Panel } from "@/components/PageHero";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { RevealImage } from "@/components/animations/RevealImage";
-import { EASE } from "@/components/animations/text";
+import { Reveal } from "@/components/animations/text";
+import { EASE, gsap, sharedImageRect, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { UrgencyBadge } from "@/components/StatusBadge";
 import { countdownLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -28,8 +29,81 @@ export default function FoodDetail() {
   const navigate = useNavigate();
   const { listings, claimListing, advanceStage, stageLabelFor, missionId } =
     useDemo();
+  const reduce = useReducedMotion();
+  const heroRef = useRef<HTMLDivElement>(null);
+  const stagesRef = useRef<HTMLDivElement>(null);
+  // Read once, on mount: when the visitor arrived by tapping a card, the hero
+  // grows out of that card's image box instead of just fading in.
+  const [cameFromCard] = useState(
+    () => sharedImageRect.current?.id === id,
+  );
 
   const listing = listings.find((item) => item.id === id);
+  const currentIndex = listing ? stageOrder.indexOf(listing.stage) : -1;
+
+  // Shared element: clip the hero open from the card's rectangle. The box is
+  // cleared only once the tween finishes, so a re-mounted effect can replay it.
+  useIsoLayoutEffect(() => {
+    const el = heroRef.current;
+    const shared = sharedImageRect.current;
+    if (!el || !shared || shared.id !== id || reduce) {
+      sharedImageRect.current = null;
+      return;
+    }
+    const target = el.getBoundingClientRect();
+    if (!target.width || !target.height) {
+      sharedImageRect.current = null;
+      return;
+    }
+    const clamp = (value: number) => Math.max(0, value);
+    const tween = gsap.fromTo(
+      el,
+      {
+        clipPath: `inset(${clamp(((shared.rect.top - target.top) / target.height) * 100)}% ${clamp(((target.right - shared.rect.right) / target.width) * 100)}% ${clamp(((target.bottom - shared.rect.bottom) / target.height) * 100)}% ${clamp(((shared.rect.left - target.left) / target.width) * 100)}%)`,
+        scale: 1.04,
+      },
+      {
+        clipPath: "inset(0% 0% 0% 0%)",
+        scale: 1,
+        duration: 0.9,
+        ease: EASE,
+        // Waits for the route veil to start lifting, so the flight lands in
+        // view instead of behind the wipe.
+        delay: 0.3,
+        clearProps: "clipPath,transform",
+        onComplete: () => {
+          sharedImageRect.current = null;
+        },
+      },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [id, reduce]);
+
+  // The four stage rules draw themselves in and then track the listing's
+  // progress: advancing a stage animates the next rule open.
+  useIsoLayoutEffect(() => {
+    const root = stagesRef.current;
+    if (!root || reduce) return;
+    const bars = gsap.utils.toArray<HTMLElement>("[data-stage-bar]", root);
+    bars.forEach((bar, index) => {
+      gsap.fromTo(
+        bar,
+        { scaleX: 0 },
+        {
+          scaleX: index <= currentIndex ? 1 : 0,
+          transformOrigin: "left center",
+          duration: 0.8,
+          ease: EASE,
+          delay: index * 0.12,
+        },
+      );
+    });
+    return () => {
+      gsap.killTweensOf(bars);
+    };
+  }, [currentIndex, reduce]);
 
   if (!listing) {
     return (
@@ -54,7 +128,6 @@ export default function FoodDetail() {
     );
   }
 
-  const currentIndex = stageOrder.indexOf(listing.stage);
   const isDelivered = listing.stage === "delivered";
   const isMission = missionId === listing.id;
   const related = listings
@@ -100,11 +173,9 @@ export default function FoodDetail() {
                 className="aspect-[4/5] w-full rounded-sm sm:aspect-[16/12] lg:aspect-[4/5]"
                 innerClassName="h-full w-full"
                 parallax={18}
+                reveal={!cameFromCard}
               >
-                <motion.div
-                  layoutId={`food-card-${listing.id}`}
-                  className="h-full w-full"
-                >
+                <div ref={heroRef} className="h-full w-full">
                   <FoodImage
                     photo={photoFor(listing.id, listing.category)}
                     category={listing.category}
@@ -113,7 +184,7 @@ export default function FoodDetail() {
                     eager
                     sizes="(max-width: 1024px) 92vw, 45vw"
                   />
-                </motion.div>
+                </div>
               </RevealImage>
 
               <div className="mt-5 flex flex-wrap gap-x-9 gap-y-4 border-y border-forest/12 py-4">
@@ -189,12 +260,7 @@ export default function FoodDetail() {
 
               <div className="mt-9">
                 {isDelivered ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, ease: EASE }}
-                    className="flex flex-wrap items-center justify-between gap-4 rounded-sm border border-forest bg-forest px-6 py-5 text-ivory"
-                  >
+                  <Reveal className="flex flex-wrap items-center justify-between gap-4 rounded-sm border border-forest bg-forest px-6 py-5 text-ivory">
                     <div>
                       <p className="text-[1.05rem] font-extrabold tracking-[-0.02em] uppercase">
                         Delivered and counted
@@ -207,7 +273,7 @@ export default function FoodDetail() {
                     <MagneticButton to="/impact" variant="ember" size="sm">
                       See impact
                     </MagneticButton>
-                  </motion.div>
+                  </Reveal>
                 ) : listing.stage === "listed" ? (
                   <div className="flex flex-wrap items-center gap-4">
                     <MagneticButton onClick={handleClaim} cursorLabel="ACCEPT">
@@ -333,18 +399,22 @@ export default function FoodDetail() {
             ))}
           </div>
 
-          <div className="mt-12 grid gap-0 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            ref={stagesRef}
+            className="mt-12 grid gap-0 sm:grid-cols-2 lg:grid-cols-4"
+          >
             {stageOrder.map((stage, index) => {
               const complete = index <= currentIndex;
               return (
                 <div key={stage} className="relative pb-8 pr-5 sm:pr-7">
                   <div className="absolute top-2 left-0 h-px w-full bg-forest/15" />
-                  <motion.div
+                  <div
+                    data-stage-bar
                     className="absolute top-2 left-0 h-px origin-left bg-ember"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: complete ? 1 : 0 }}
-                    transition={{ duration: 0.8, ease: EASE, delay: index * 0.12 }}
-                    style={{ width: "100%" }}
+                    style={{
+                      width: "100%",
+                      transform: `scaleX(${complete ? 1 : 0})`,
+                    }}
                   />
                   <span
                     className={cn(

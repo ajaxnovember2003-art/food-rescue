@@ -1,11 +1,45 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useRise } from "@/hooks/use-rise";
 import { LogoGlyph } from "@/components/Logo";
 
 export default function NotFound() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
+
+  // Masks the headline lines up, then settles the label and the note under it.
+  useRise(sectionRef, {
+    immediate: true,
+    delay: 0.1,
+    stagger: 0.1,
+    yPercent: 112,
+  });
+
+  useIsoLayoutEffect(() => {
+    const root = sectionRef.current;
+    if (!root || reduce) return;
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline();
+      tl.from(
+        "[data-notfound-label]",
+        { opacity: 0, y: 12, duration: 0.8, ease: EASE },
+        0,
+      ).from(
+        "[data-notfound-note]",
+        { opacity: 0, y: 16, duration: 0.9, ease: EASE },
+        0.5,
+      );
+    }, root);
+    return () => ctx.revert();
+  }, [reduce]);
+
   return (
-    <section className="grain relative flex min-h-[80vh] items-center overflow-hidden bg-forest-deep py-32 text-ivory">
+    <section
+      ref={sectionRef}
+      className="grain relative flex min-h-[80vh] items-center overflow-hidden bg-forest-deep py-32 text-ivory"
+    >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
@@ -15,42 +49,25 @@ export default function NotFound() {
         }}
       />
       <div className="shell relative">
-        <motion.span
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: EASE }}
-          className="label-xs text-ivory/45"
-        >
+        <span data-notfound-label className="label-xs text-ivory/45">
           404 — This route went cold
-        </motion.span>
+        </span>
 
         <h1 className="display-xl mt-8 max-w-4xl">
           <span className="block overflow-hidden py-[0.02em]">
-            <motion.span
-              className="block"
-              initial={{ y: "112%" }}
-              animate={{ y: "0%" }}
-              transition={{ duration: 1.1, ease: EASE, delay: 0.1 }}
-            >
+            <span data-rise className="block will-change-transform">
               Nothing here
-            </motion.span>
+            </span>
           </span>
           <span className="block overflow-hidden py-[0.02em]">
-            <motion.span
-              className="block"
-              initial={{ y: "112%" }}
-              animate={{ y: "0%" }}
-              transition={{ duration: 1.1, ease: EASE, delay: 0.2 }}
-            >
+            <span data-rise className="block will-change-transform">
               to rescue<span className="text-ember">.</span>
-            </motion.span>
+            </span>
           </span>
         </h1>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 0.5 }}
+        <div
+          data-notfound-note
           className="mt-10 flex max-w-xl items-start gap-4 border-t border-ivory/12 pt-8"
         >
           <LogoGlyph className="mt-1 size-6 shrink-0 text-ember" />
@@ -58,7 +75,7 @@ export default function NotFound() {
             The page you asked for is not part of the network. Head back to the
             rescue pool — there is food waiting there right now.
           </p>
-        </motion.div>
+        </div>
 
         <div className="mt-10 flex flex-wrap gap-4">
           <MagneticButton to="/rescue" variant="ember">

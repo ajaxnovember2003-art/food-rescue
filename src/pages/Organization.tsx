@@ -1,11 +1,12 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
 import { ArrowRight, ClipboardCheck, PackageCheck, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { PageHero, Panel, StatBlock } from "@/components/PageHero";
 import { CategoryBars, RescueTrendChart } from "@/components/ImpactChart";
 import { ImpactCounter } from "@/components/animations/ImpactCounter";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { StageBadge, UrgencyBadge } from "@/components/StatusBadge";
 import { kitchenRequests } from "@/data/mock";
 import { countdownLabel, formatNumber } from "@/lib/format";
@@ -20,6 +21,29 @@ const stageLabel = {
 
 export default function Organization() {
   const { listings, stats, advanceStage } = useDemo();
+  const shellRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  // Kitchen request bars fill as they scroll into view.
+  useIsoLayoutEffect(() => {
+    const root = shellRef.current;
+    if (!root || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.utils
+        .toArray<HTMLElement>("[data-request-bar]", root)
+        .forEach((el, index) => {
+          gsap.from(el, {
+            scaleX: 0,
+            transformOrigin: "left center",
+            duration: 1,
+            ease: EASE,
+            delay: index * 0.08,
+            scrollTrigger: { trigger: el, start: "top 95%", once: true },
+          });
+        });
+    }, root);
+    return () => ctx.revert();
+  }, [reduce]);
 
   const incoming = listings.filter((item) => item.stage === "listed");
   const deliveries = listings.filter(
@@ -50,7 +74,7 @@ export default function Organization() {
       </PageHero>
 
       <section className="bg-ivory pb-28">
-        <div className="shell grid gap-6 lg:grid-cols-12">
+        <div ref={shellRef} className="shell grid gap-6 lg:grid-cols-12">
           <Panel label="Incoming food" className="lg:col-span-7">
             <ul className="divide-y divide-forest/10">
               {incoming.slice(0, 5).map((listing) => (
@@ -96,7 +120,7 @@ export default function Organization() {
 
           <Panel label="Kitchen requests" className="lg:col-span-5">
             <ul className="space-y-5">
-              {kitchenRequests.map((request, index) => {
+              {kitchenRequests.map((request) => {
                 const progress = request.matched / request.servings;
                 return (
                   <li key={request.id}>
@@ -111,16 +135,10 @@ export default function Organization() {
                     </p>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="h-1 flex-1 overflow-hidden rounded-full bg-forest/12">
-                        <motion.div
+                        <div
+                          data-request-bar
                           className="h-full origin-left rounded-full bg-ember"
-                          initial={{ scaleX: 0 }}
-                          whileInView={{ scaleX: progress }}
-                          viewport={{ once: true }}
-                          transition={{
-                            duration: 1,
-                            ease: EASE,
-                            delay: index * 0.08,
-                          }}
+                          style={{ transform: `scaleX(${progress})` }}
                         />
                       </div>
                       <span className="text-[0.7rem] font-semibold text-forest/60">

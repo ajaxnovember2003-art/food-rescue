@@ -1,8 +1,8 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, Bike, MapPin, Store, Users } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { EASE } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { countdownLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { donors, listings } from "@/data/mock";
@@ -29,14 +29,69 @@ const volunteers = [
  */
 export function RescueMap({ className }: { className?: string }) {
   const [selected, setSelected] = useState<FoodListing | null>(listings[0]);
-  const [pulseKey, setPulseKey] = useState(0);
   const navigate = useNavigate();
   const reduce = useReducedMotion();
+  const mapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const pulseRef = useRef<HTMLSpanElement>(null);
 
   const activeDonor = donors.find((donor) => donor.id === selected?.donorId);
 
+  // The rescue routes activate as the map scrolls in: the dashes run along
+  // each road while it fades up.
+  useIsoLayoutEffect(() => {
+    const root = mapRef.current;
+    if (!root || reduce) return;
+    const ctx = gsap.context(() => {
+      gsap.from("[data-map-route]", {
+        opacity: 0,
+        strokeDashoffset: 84,
+        duration: 1.6,
+        ease: EASE,
+        stagger: 0.15,
+        scrollTrigger: { trigger: root, start: "top 90%", once: true },
+      });
+    }, root);
+    return () => ctx.revert();
+  }, [reduce]);
+
+  // The read-out crossfades whenever a different marker is chosen.
+  useIsoLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!el || reduce) return;
+    const tween = gsap.fromTo(
+      el,
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.35, ease: EASE },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [selected?.id, reduce]);
+
+  // The active marker keeps pulsing outward.
+  useIsoLayoutEffect(() => {
+    const el = pulseRef.current;
+    if (!el || reduce) return;
+    const tween = gsap.fromTo(
+      el,
+      { scale: 0.4, opacity: 0.9 },
+      {
+        scale: 1.5,
+        opacity: 0,
+        duration: 1.6,
+        repeat: -1,
+        ease: "power2.out",
+      },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [selected?.id, reduce]);
+
   return (
     <div
+      ref={mapRef}
       className={cn(
         "relative overflow-hidden rounded-sm border border-ivory/12 bg-forest-deep",
         className,
@@ -95,22 +150,15 @@ export function RescueMap({ className }: { className?: string }) {
             "M 400 225 Q 520 200 640 150",
             "M 400 225 Q 320 300 260 350",
             "M 400 225 Q 520 300 660 320",
-          ].map((route, index) => (
-            <motion.path
+          ].map((route) => (
+            <path
+              data-map-route
               key={route}
               d={route}
               fill="none"
               stroke="rgba(226,112,58,0.5)"
               strokeWidth="1.2"
               strokeDasharray="5 7"
-              initial={{ pathLength: 0, opacity: 0 }}
-              whileInView={{ pathLength: 1, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{
-                duration: 1.6,
-                ease: EASE,
-                delay: reduce ? 0 : index * 0.15,
-              }}
             />
           ))}
 
@@ -131,10 +179,7 @@ export function RescueMap({ className }: { className?: string }) {
             <button
               key={listing.id}
               type="button"
-              onClick={() => {
-                setSelected(listing);
-                setPulseKey((key) => key + 1);
-              }}
+              onClick={() => setSelected(listing)}
               aria-label={`${listing.name} · ${listing.pickupArea}`}
               data-cursor="hover"
               className="absolute -translate-x-1/2 -translate-y-1/2"
@@ -142,12 +187,10 @@ export function RescueMap({ className }: { className?: string }) {
             >
               <span className="relative grid size-9 place-items-center">
                 {isActive ? (
-                  <motion.span
-                    key={pulseKey}
+                  <span
+                    ref={pulseRef}
+                    aria-hidden="true"
                     className="absolute size-9 rounded-full border border-ember"
-                    initial={{ scale: 0.4, opacity: 0.9 }}
-                    animate={{ scale: 1.5, opacity: 0 }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
                   />
                 ) : null}
                 <span
@@ -190,14 +233,7 @@ export function RescueMap({ className }: { className?: string }) {
 
           <div className="pointer-events-auto flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-xs rounded-sm border border-ivory/15 bg-forest-deep/80 p-4 backdrop-blur-md">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={selected?.id ?? "empty"}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.35, ease: EASE }}
-                >
+              <div ref={panelRef}>
                   <p className="label-xs text-ivory/45">
                     {activeDonor?.kind ?? "Donor"} · {selected?.pickupArea}
                   </p>
@@ -222,8 +258,7 @@ export function RescueMap({ className }: { className?: string }) {
                     Open listing
                     <ArrowUpRight className="size-3.5" />
                   </button>
-                </motion.div>
-              </AnimatePresence>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-sm border border-ivory/12 bg-forest-deep/55 px-4 py-3 backdrop-blur-md">

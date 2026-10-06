@@ -1,4 +1,4 @@
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { Cursor } from "@/components/Cursor";

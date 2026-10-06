@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { useRef } from "react";
 import {
   Bike,
   Check,
@@ -14,7 +14,9 @@ import { photoFor } from "@/data/photos";
 import { PageHero, Panel } from "@/components/PageHero";
 import { ImpactCounter } from "@/components/animations/ImpactCounter";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE } from "@/components/animations/text";
+import { Reveal } from "@/components/animations/text";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { StageBadge, UrgencyBadge } from "@/components/StatusBadge";
 import { countdownLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -56,6 +58,28 @@ export default function Volunteer() {
   const mission = activeMission;
   const openListings = listings.filter((item) => item.stage !== "delivered");
   const currentIndex = mission ? stageOrder.indexOf(mission.stage) : -1;
+  const barRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const stageProgress = mission
+    ? mission.stage === "listed"
+      ? 0
+      : currentIndex / (stageOrder.length - 1)
+    : 0;
+
+  // The mission rule fills as each stage completes.
+  useIsoLayoutEffect(() => {
+    const el = barRef.current;
+    if (!el || !mission || reduce) return;
+    const tween = gsap.to(el, {
+      scaleX: stageProgress,
+      transformOrigin: "left center",
+      duration: 0.9,
+      ease: EASE,
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [mission, stageProgress, reduce]);
 
   const handle = (stage: "claimed" | "picked_up" | "delivered") => {
     if (!mission) return;
@@ -172,17 +196,13 @@ export default function Volunteer() {
 
                     <div className="relative mt-5">
                       <div className="absolute top-2 left-0 h-px w-full bg-forest/15" />
-                      <motion.div
+                      <div
+                        ref={barRef}
                         className="absolute top-2 left-0 h-px origin-left bg-ember"
-                        initial={false}
-                        animate={{
-                          scaleX:
-                            mission.stage === "listed"
-                              ? 0
-                              : currentIndex / (stageOrder.length - 1),
+                        style={{
+                          width: "100%",
+                          transform: `scaleX(${stageProgress})`,
                         }}
-                        transition={{ duration: 0.9, ease: EASE }}
-                        style={{ width: "100%" }}
                       />
                       <div className="relative grid grid-cols-4 gap-4">
                         {stageOrder.map((stage, index) => (
@@ -239,14 +259,11 @@ export default function Volunteer() {
                       );
                     })}
 
-                    <AnimatePresence>
-                      {mission.stage === "delivered" ? (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.6, ease: EASE }}
-                          className="w-full rounded-sm border border-forest bg-forest px-6 py-5 text-ivory"
-                        >
+                    {mission.stage === "delivered" ? (
+                      <Reveal
+                        y={10}
+                        className="w-full rounded-sm border border-forest bg-forest px-6 py-5 text-ivory"
+                      >
                           <p className="text-[1rem] font-extrabold tracking-[-0.02em] uppercase">
                             Rescue complete
                           </p>
@@ -268,9 +285,8 @@ export default function Volunteer() {
                               Take another rescue
                             </MagneticButton>
                           </div>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
+                        </Reveal>
+                    ) : null}
                   </div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
-import { motion } from "framer-motion";
-import type { ReactNode } from "react";
-import { EASE } from "@/components/animations/text";
+import { useRef, type ReactNode } from "react";
+import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useRise } from "@/hooks/use-rise";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,8 +25,36 @@ export function PageHero({
   children?: ReactNode;
   className?: string;
 }) {
+  const reduce = useReducedMotion();
+  const headerRef = useRef<HTMLElement>(null);
+  const ledeRef = useRef<HTMLParagraphElement>(null);
+
+  // The masked headline lines rise in on arrival; they sit above the fold, so
+  // this plays immediately rather than waiting on a scroll trigger.
+  useRise(headerRef, {
+    immediate: true,
+    delay: 0.12,
+    stagger: 0.09,
+    yPercent: 112,
+    blur: 10,
+  });
+
+  useIsoLayoutEffect(() => {
+    const el = ledeRef.current;
+    if (!el || reduce) return;
+    const tween = gsap.fromTo(
+      el,
+      { opacity: 0, y: 16 },
+      { opacity: 1, y: 0, duration: 1, ease: EASE, delay: 0.45 },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [reduce]);
+
   return (
     <header
+      ref={headerRef}
       className={cn(
         "relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-20",
         dark ? "bg-forest-deep text-ivory" : "bg-ivory text-forest",
@@ -60,36 +89,25 @@ export function PageHero({
               dark ? "text-ivory" : "text-forest",
             )}
           >
-            {title.map((line, lineIndex) => (
+            {title.map((line) => (
               <span key={line} className="block overflow-hidden py-[0.02em]">
-                <motion.span
-                  className="block will-change-transform"
-                  initial={{ y: "112%", opacity: 0, filter: "blur(10px)" }}
-                  animate={{ y: "0%", opacity: 1, filter: "blur(0px)" }}
-                  transition={{
-                    duration: 1.15,
-                    ease: EASE,
-                    delay: 0.12 + lineIndex * 0.09,
-                  }}
-                >
+                <span data-rise className="block will-change-transform">
                   {line}
-                </motion.span>
+                </span>
               </span>
             ))}
           </h1>
 
           {lede ? (
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, ease: EASE, delay: 0.45 }}
+            <p
+              ref={ledeRef}
               className={cn(
                 "max-w-xl text-[1rem] leading-relaxed lg:col-span-5 lg:pb-2",
                 dark ? "text-ivory/65" : "text-forest/65",
               )}
             >
               {lede}
-            </motion.p>
+            </p>
           ) : null}
         </div>
 

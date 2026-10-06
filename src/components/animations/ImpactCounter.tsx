@@ -1,5 +1,7 @@
-import { animate, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useInView } from "@/hooks/use-in-view";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { EASE, gsap } from "@/lib/gsap";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
 
@@ -28,21 +30,31 @@ export function ImpactCounter({
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const shownRef = useRef(0);
-  const inView = useInView(ref, { once, margin: "-10% 0px -10% 0px" });
+  const inView = useInView(ref, { margin: "-10% 0px -10% 0px", once });
   const reduce = useReducedMotion();
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    if (!inView || reduce) return;
-    const controls = animate(shownRef.current, value, {
+    if (!inView) return;
+    // Reduced motion renders the final value directly (see `current` below),
+    // so no state needs to be written here.
+    if (reduce) {
+      shownRef.current = value;
+      return;
+    }
+    const proxy = { current: shownRef.current };
+    const tween = gsap.to(proxy, {
+      current: value,
       duration,
-      ease: [0.16, 1, 0.3, 1],
-      onUpdate: (latest) => {
-        shownRef.current = latest;
-        setDisplay(latest);
+      ease: EASE,
+      onUpdate: () => {
+        shownRef.current = proxy.current;
+        setDisplay(proxy.current);
       },
     });
-    return () => controls.stop();
+    return () => {
+      tween.kill();
+    };
   }, [inView, value, duration, reduce]);
 
   const current = reduce ? value : display;
