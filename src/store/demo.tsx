@@ -12,6 +12,7 @@ import {
   notificationSeed,
   personalImpactBaseline,
 } from "@/data/mock";
+import { stageLabels } from "@/data/stages";
 import type {
   DonationDraft,
   FoodListing,
@@ -20,20 +21,6 @@ import type {
   PersonalImpact,
   RescueStage,
 } from "@/types";
-
-export const stageOrder: RescueStage[] = [
-  "listed",
-  "claimed",
-  "picked_up",
-  "delivered",
-];
-
-const stageLabel: Record<RescueStage, string> = {
-  listed: "Listed",
-  claimed: "Claimed",
-  picked_up: "Picked up",
-  delivered: "Delivered",
-};
 
 interface ImpactDelta {
   meals: number;
@@ -314,7 +301,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       resetImpact,
       populateSample,
       resetDemo,
-      stageLabelFor: (stage) => stageLabel[stage],
+      stageLabelFor: (stage) => stageLabels[stage],
       dismissDelta,
     }),
     [

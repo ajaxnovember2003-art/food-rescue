@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { EASE } from "@/components/animations/text";
 
 const LETTERS = "FOODRESCUE".split("");
@@ -17,12 +17,12 @@ export function LoadingScreen() {
     return window.sessionStorage.getItem(SESSION_KEY) !== "1";
   });
 
-  const finish = () => {
+  const finish = useCallback(() => {
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem(SESSION_KEY, "1");
     }
     setPlaying(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
@@ -34,8 +34,7 @@ export function LoadingScreen() {
       window.clearTimeout(timeout);
       window.removeEventListener("keydown", onKey);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, reduce]);
+  }, [playing, reduce, finish]);
 
   useEffect(() => {
     document.body.style.overflow = playing ? "hidden" : "";

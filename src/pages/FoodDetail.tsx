@@ -21,7 +21,8 @@ import { EASE } from "@/components/animations/text";
 import { UrgencyBadge } from "@/components/StatusBadge";
 import { countdownLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { stageOrder, useDemo } from "@/store/demo";
+import { stageOrder } from "@/data/stages";
+import { useDemo } from "@/store/demo";
 
 const stageCopy: Record<string, string> = {
   listed: "Waiting for a volunteer",
