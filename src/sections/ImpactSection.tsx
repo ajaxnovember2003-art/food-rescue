@@ -6,6 +6,7 @@ import { SectionHeading } from "@/components/SectionHeading";
 import { EASE, Reveal } from "@/components/animations/text";
 import { useDemo } from "@/store/demo";
 import { formatNumber } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 /**
  * The impact chapter: a deep green panel where every number is driven by demo
@@ -33,26 +34,59 @@ export function ImpactSection() {
           lede="Meals served, kilograms diverted and emissions avoided are recorded the moment a delivery is confirmed. This is the tally for the pilot network this month."
         />
 
-        <div className="mt-16 grid gap-px overflow-hidden rounded-sm border border-ivory/12 bg-ivory/12 sm:grid-cols-2 lg:grid-cols-4">
+        {/* The payoff: three enormous numbers, alternating sides, each one
+            counting up as it enters the viewport. */}
+        <div className="mt-16 border-t border-ivory/15">
           {[
-            { value: stats.mealsRescued, label: "Meals rescued", suffix: "" },
-            { value: stats.foodDivertedKg, label: "Food diverted", suffix: " kg" },
-            { value: stats.peopleSupported, label: "People supported", suffix: "" },
-            { value: stats.activeVolunteers, label: "Active volunteers", suffix: "" },
-          ].map((counter, index) => (
+            {
+              value: stats.mealsRescued,
+              suffix: "+",
+              label: "Meals rescued",
+              note: "Portions served from surplus that would have been thrown away.",
+            },
+            {
+              value: stats.foodDivertedKg,
+              suffix: " kg",
+              label: "Food diverted",
+              note: "Kept out of waste streams across the pilot districts.",
+            },
+            {
+              value: stats.peopleSupported,
+              suffix: "",
+              label: "People supported",
+              note: "Reached through community kitchens, shelters and shared fridges.",
+            },
+          ].map((row, index) => (
             <motion.div
-              key={counter.label}
-              initial={{ opacity: 0, y: 20 }}
+              key={row.label}
+              initial={{ opacity: 0, y: 26 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-8% 0px" }}
-              transition={{ duration: 0.85, ease: EASE, delay: index * 0.07 }}
-              className="bg-forest-deep px-6 py-8"
+              transition={{ duration: 0.9, ease: EASE, delay: index * 0.06 }}
+              className={cn(
+                "flex flex-col gap-5 border-b border-ivory/12 py-9 md:flex-row md:items-end md:justify-between md:gap-12",
+                index % 2 === 1 && "md:flex-row-reverse md:text-right",
+              )}
             >
-              <p className="text-[clamp(1.9rem,4vw,2.9rem)] leading-none font-extrabold tracking-[-0.045em]">
-                <ImpactCounter value={counter.value} />
-                {counter.suffix}
+              <p className="text-[clamp(3rem,8.5vw,7rem)] leading-[0.85] font-extrabold tracking-[-0.05em] tabular-nums">
+                <ImpactCounter value={row.value} />
+                <span
+                  className={row.suffix === "+" ? "text-ember" : "uppercase"}
+                >
+                  {row.suffix}
+                </span>
               </p>
-              <p className="label-xs mt-4 text-ivory/45">{counter.label}</p>
+              <div className="md:max-w-xs">
+                <p className="label-xs text-ivory/85">{row.label}</p>
+                <p
+                  className={cn(
+                    "mt-2 text-[0.82rem] leading-relaxed text-ivory/50",
+                    index % 2 === 1 && "md:ml-auto",
+                  )}
+                >
+                  {row.note}
+                </p>
+              </div>
             </motion.div>
           ))}
         </div>

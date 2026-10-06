@@ -122,7 +122,12 @@ export function Hero() {
 
             <h1 className="display-xl mt-8 text-ivory">
               <HeroLine text={LINE_ONE} delay={0.35} />
-              <HeroLine text={LINE_TWO} delay={0.47} />
+              <HeroLine text={LINE_TWO} delay={0.47}>
+                <span>
+                  should{" "}
+                  <span className="serif-i text-[1.12em]">never</span>
+                </span>
+              </HeroLine>
               <HeroLine text={LINE_THREE} delay={0.59}>
                 <span>
                   go to waste
@@ -177,9 +182,9 @@ export function Hero() {
               </div>
               <div className="hidden h-12 w-px bg-ivory/12 sm:block" />
               <div className="hidden sm:block">
-                <p className="text-[0.8rem] leading-relaxed text-ivory/55">
-                  Every number on this site is live frontend demo state — rescue
-                  a listing and watch it move.
+                <p className="max-w-[16rem] text-[0.78rem] leading-relaxed text-ivory/55">
+                  Live demo network — rescue a listing and watch this figure
+                  move.
                 </p>
               </div>
             </motion.div>
@@ -195,8 +200,13 @@ export function Hero() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.6, ease: EASE, delay: 0.5 }}
-            className="mx-auto w-full max-w-[440px] px-4 sm:px-0"
+            className="mx-auto w-full max-w-[460px] px-4 sm:px-0 lg:max-w-none lg:pl-8"
           >
+            <div className="mb-5 flex items-center gap-4">
+              <span className="label-xs text-ivory/40">The rescue loop</span>
+              <span className="h-px flex-1 bg-ivory/12" />
+              <span className="label-xs text-ivory/40">Donor → impact</span>
+            </div>
             <RescueNetwork parallax={pointer} />
           </motion.div>
         </motion.div>

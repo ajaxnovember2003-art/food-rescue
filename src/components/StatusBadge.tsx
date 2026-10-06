@@ -12,6 +12,8 @@ export function UrgencyBadge({
 }) {
   const urgency = urgencyFor(minutes);
   const meta = urgencyMeta[urgency];
+  // Only listings about to close pulse — urgency should feel rare, not noisy.
+  const live = urgency === "urgent";
   return (
     <span
       className={cn(
@@ -20,7 +22,17 @@ export function UrgencyBadge({
         className,
       )}
     >
-      <span className={cn("size-1.5 rounded-full", meta.dot)} />
+      <span className="relative flex size-1.5">
+        {live ? (
+          <span
+            className={cn(
+              "absolute inline-flex size-full animate-ping rounded-full opacity-60",
+              meta.dot,
+            )}
+          />
+        ) : null}
+        <span className={cn("relative inline-flex size-1.5 rounded-full", meta.dot)} />
+      </span>
       {countdownLabel(minutes)}
     </span>
   );

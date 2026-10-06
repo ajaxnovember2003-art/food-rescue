@@ -24,21 +24,21 @@ const pile: Array<{
     hue: 152,
     label: "Buffet surplus",
     photo: photoAt("meals", 1),
-    from: { x: -2.5, y: -52, rotate: -9 },
+    from: { x: -1.5, y: -14, rotate: -4 },
   },
   {
     category: "bakery",
     hue: 34,
     label: "Unsold bakery",
     photo: photoAt("bakery", 1),
-    from: { x: 2, y: -68, rotate: 6 },
+    from: { x: 1.5, y: -19, rotate: 3 },
   },
   {
     category: "fruits",
     hue: 62,
     label: "Cosmetic fruit",
     photo: photoAt("fruits", 2),
-    from: { x: -1.5, y: -38, rotate: -5 },
+    from: { x: -1, y: -13, rotate: -2 },
   },
 ];
 
@@ -186,9 +186,10 @@ export function Problem() {
             </motion.span>
           </div>
 
-          <div className="relative mt-6 h-[420px] sm:h-[520px]">
-            {/* dusty pile that settles into a grid */}
-            <div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* loose photos that settle into a structured rescue grid — the
+              container is content-sized so nothing can overflow on phones */}
+          <div className="relative mt-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {pile.map((item, index) => (
                 <SurplusCard
                   key={item.category}

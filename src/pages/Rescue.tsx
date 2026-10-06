@@ -71,7 +71,7 @@ export default function Rescue() {
                   aria-pressed={active}
                   data-cursor="hover"
                   className={cn(
-                    "relative rounded-full border px-4 py-2 text-[0.68rem] font-semibold tracking-[0.14em] uppercase transition-colors duration-300",
+                    "relative rounded-full border px-4 py-2.5 text-[0.68rem] font-semibold tracking-[0.14em] uppercase transition-colors duration-300",
                     active
                       ? "border-forest text-ivory"
                       : "border-forest/18 text-forest/60 hover:border-forest/40 hover:text-forest",

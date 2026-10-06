@@ -18,9 +18,9 @@ const chapters: Array<{
   photo: FoodPhoto;
 }> = [
   {
-    id: "surplus",
+    id: "donate",
     index: "01",
-    title: "Surplus",
+    title: "Donate",
     copy: "A kitchen finishes service with six trays it will never sell. It takes forty seconds to list them.",
     stat: "40 sec to list",
     category: "meals",
@@ -173,8 +173,8 @@ export function HorizontalStory() {
                       <span className="label-xs text-forest/50">
                         {chapter.stat}
                       </span>
-                      <span className="text-[0.68rem] font-semibold tracking-[0.2em] text-ember uppercase">
-                        {chapter.title}
+                      <span className="text-[0.68rem] font-semibold tracking-[0.2em] text-forest/40 uppercase">
+                        {chapter.index} / 05
                       </span>
                     </div>
                   </div>

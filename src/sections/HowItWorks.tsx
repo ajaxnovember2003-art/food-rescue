@@ -1,22 +1,12 @@
 import { motion } from "framer-motion";
-import {
-  Bike,
-  ClipboardList,
-  LineChart,
-  Route,
-  type LucideIcon,
-} from "lucide-react";
 import { EASE } from "@/components/animations/text";
 import { howItWorks } from "@/data/mock";
 
-const icons: Record<string, LucideIcon> = {
-  clipboard: ClipboardList,
-  route: Route,
-  bike: Bike,
-  chart: LineChart,
-};
-
-/** The practical answer to "how does this actually work", kept deliberately short. */
+/**
+ * The practical answer to "how does this actually work", kept deliberately
+ * short. No icon grid — each step hangs off its own hairline with a marker on
+ * the route, and the line draws ember on hover.
+ */
 export function HowItWorks() {
   return (
     <section
@@ -38,35 +28,37 @@ export function HowItWorks() {
           </p>
         </div>
 
-        <div className="relative mt-14">
-          <div className="absolute top-6 right-0 left-0 h-px bg-forest/15" />
+        <div className="mt-14">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-            {howItWorks.map((step, index) => {
-              const Icon = icons[step.icon] ?? ClipboardList;
-              return (
-                <motion.div
-                  key={step.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-6% 0px" }}
-                  transition={{ duration: 0.8, ease: EASE, delay: index * 0.08 }}
-                  className="relative"
-                >
-                  <span className="relative z-10 grid size-12 place-items-center rounded-full border border-forest/20 bg-sand text-forest">
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="label-xs mt-6 block text-ember">
-                    0{index + 1}
-                  </span>
-                  <h3 className="mt-3 text-[1.1rem] font-extrabold tracking-[-0.02em] text-forest uppercase">
-                    {step.title}
-                  </h3>
-                  <p className="mt-3 max-w-xs text-[0.85rem] leading-relaxed text-forest/65">
-                    {step.body}
-                  </p>
-                </motion.div>
-              );
-            })}
+            {howItWorks.map((step, index) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-6% 0px" }}
+                transition={{ duration: 0.8, ease: EASE, delay: index * 0.08 }}
+                data-cursor="hover"
+                className="group relative border-t border-forest/15 pt-7"
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-px left-0 h-px w-full origin-left scale-x-0 bg-ember transition-transform duration-700 ease-out group-hover:scale-x-100"
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-1 left-0 size-1.5 -translate-x-1/2 rounded-full bg-forest/30 transition-colors duration-500 group-hover:bg-ember"
+                />
+                <span className="label-xs block text-ember">
+                  0{index + 1}
+                </span>
+                <h3 className="mt-3 text-[1.1rem] font-extrabold tracking-[-0.02em] text-forest uppercase">
+                  {step.title}
+                </h3>
+                <p className="mt-3 max-w-xs text-[0.85rem] leading-relaxed text-forest/65">
+                  {step.body}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>

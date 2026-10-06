@@ -4,9 +4,9 @@ import { Reveal } from "@/components/animations/text";
 import { useDemo } from "@/store/demo";
 
 const facts = [
-  { value: "24 min", label: "Average time to match a listing" },
   { value: "14 min", label: "Average time to accept a pickup" },
   { value: "3.2 km", label: "Average rescue route length" },
+  { value: "19", label: "Partner NGOs coordinating drops" },
 ];
 
 /** Section 08 on the landing page: the network as a place, not a list. */
@@ -28,9 +28,9 @@ export function MapSection() {
           <RescueMap />
         </Reveal>
 
-        <div className="mt-10 grid gap-px overflow-hidden rounded-sm border border-ivory/12 bg-ivory/12 sm:grid-cols-3">
+        <div className="mt-10 flex flex-wrap gap-x-14 gap-y-7 border-t border-ivory/12 pt-7">
           {facts.map((fact) => (
-            <div key={fact.label} className="bg-forest px-6 py-7">
+            <div key={fact.label} className="min-w-[10rem]">
               <p className="text-[1.6rem] leading-none font-extrabold tracking-[-0.04em]">
                 {fact.value}
               </p>

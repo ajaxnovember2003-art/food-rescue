@@ -1,14 +1,6 @@
 import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  Check,
-  MapPin,
-  Package,
-  ShieldCheck,
-  Snowflake,
-  Timer,
-  Truck,
-} from "lucide-react";
+import { Fragment } from "react";
+import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useNavigate, useParams } from "react-router";
 import { FoodImage } from "@/components/FoodImage";
@@ -124,24 +116,23 @@ export default function FoodDetail() {
                 </motion.div>
               </RevealImage>
 
-              <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-4">
+              <div className="mt-5 flex flex-wrap gap-x-9 gap-y-4 border-y border-forest/12 py-4">
                 {[
-                  { label: "Storage", value: listing.storage, icon: Snowflake },
-                  { label: "Quantity", value: listing.quantityLabel, icon: Package },
-                  { label: "Distance", value: `${listing.distanceKm} km`, icon: MapPin },
-                  { label: "Safe for", value: countdownLabel(listing.minutesLeft), icon: Timer },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={item.label} className="bg-[#fffdf8] px-4 py-4">
-                      <Icon className="size-3.5 text-forest/40" />
-                      <p className="mt-3 text-[0.8rem] font-semibold text-forest">
-                        {item.value}
-                      </p>
-                      <p className="label-xs mt-1 text-forest/40">{item.label}</p>
-                    </div>
-                  );
-                })}
+                  { label: "Storage", value: listing.storage },
+                  { label: "Quantity", value: listing.quantityLabel },
+                  { label: "Distance", value: `${listing.distanceKm} km` },
+                  {
+                    label: "Safe for",
+                    value: countdownLabel(listing.minutesLeft),
+                  },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <p className="label-xs text-forest/40">{item.label}</p>
+                    <p className="mt-1.5 text-[0.85rem] font-semibold text-forest">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -169,16 +160,27 @@ export default function FoodDetail() {
                 {listing.notes}
               </p>
 
-              <dl className="mt-9 grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2">
+              <dl className="mt-8 border-t border-forest/12">
                 {[
                   { term: "Donor", detail: listing.donorName },
-                  { term: "Pickup", detail: `${listing.pickupArea} · ${listing.pickupWindow}` },
+                  {
+                    term: "Pickup",
+                    detail: `${listing.pickupArea} · ${listing.pickupWindow}`,
+                  },
                   { term: "Delivery", detail: listing.dropoff },
-                  { term: "Servings", detail: `${listing.servings} · ${listing.weightKg} kg` },
+                  {
+                    term: "Servings",
+                    detail: `${listing.servings} · ${listing.weightKg} kg`,
+                  },
                 ].map((row) => (
-                  <div key={row.term} className="bg-[#fffdf8] px-5 py-5">
-                    <dt className="label-xs text-forest/40">{row.term}</dt>
-                    <dd className="mt-2 text-[0.9rem] font-medium text-forest">
+                  <div
+                    key={row.term}
+                    className="flex flex-col gap-1 border-b border-forest/12 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-8"
+                  >
+                    <dt className="label-xs shrink-0 text-forest/40 sm:w-28">
+                      {row.term}
+                    </dt>
+                    <dd className="text-[0.92rem] font-medium text-forest sm:text-right">
                       {row.detail}
                     </dd>
                   </div>
@@ -274,11 +276,68 @@ export default function FoodDetail() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {/* the physical route: donor → volunteer → destination, lighting up
+              as the listing advances */}
+          <div className="mt-10 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            {[
+              {
+                label: "Donor",
+                value: listing.donorName,
+                sub: listing.pickupArea,
+                reached: true,
+              },
+              {
+                label: "Volunteer",
+                value: "You · on the route",
+                sub: `Pickup window ${listing.pickupWindow}`,
+                reached: currentIndex >= 1,
+              },
+              {
+                label: "Destination",
+                value: listing.dropoff,
+                sub: isDelivered ? "Delivered and counted" : "Awaiting delivery",
+                reached: isDelivered,
+              },
+            ].map((stop, index) => (
+              <Fragment key={stop.label}>
+                {index > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="shrink-0 self-center rotate-90 text-[0.95rem] text-forest/35 sm:rotate-0"
+                  >
+                    →
+                  </span>
+                ) : null}
+                <div
+                  className={cn(
+                    "min-w-0 flex-1 border-t-2 pt-3 transition-colors duration-700",
+                    stop.reached ? "border-ember" : "border-forest/15",
+                  )}
+                >
+                  <p
+                    className={cn(
+                      "label-xs transition-colors duration-500",
+                      stop.reached ? "text-ember" : "text-forest/40",
+                    )}
+                  >
+                    {stop.label}
+                  </p>
+                  <p className="mt-1.5 truncate text-[0.92rem] font-semibold text-forest">
+                    {stop.value}
+                  </p>
+                  <p className="mt-0.5 text-[0.76rem] text-forest/55">
+                    {stop.sub}
+                  </p>
+                </div>
+              </Fragment>
+            ))}
+          </div>
+
+          <div className="mt-12 grid gap-0 sm:grid-cols-2 lg:grid-cols-4">
             {stageOrder.map((stage, index) => {
               const complete = index <= currentIndex;
               return (
-                <div key={stage} className="relative">
+                <div key={stage} className="relative pb-8 pr-5 sm:pr-7">
                   <div className="absolute top-2 left-0 h-px w-full bg-forest/15" />
                   <motion.div
                     className="absolute top-2 left-0 h-px origin-left bg-ember"
@@ -330,12 +389,6 @@ export default function FoodDetail() {
           </div>
 
           <div className="mt-12 flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-3 rounded-sm border border-forest/15 bg-[#fffdf8] px-5 py-4">
-              <Truck className="size-4 text-forest/50" />
-              <p className="text-[0.82rem] text-forest/70">
-                Delivery target: <strong className="text-forest">{listing.dropoff}</strong>
-              </p>
-            </div>
             <button
               type="button"
               onClick={() => navigate("/rescue")}

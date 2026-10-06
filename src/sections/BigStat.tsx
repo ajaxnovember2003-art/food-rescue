@@ -1,15 +1,13 @@
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
-import { ImpactCounter } from "@/components/animations/ImpactCounter";
 import { AnimatedWords, EASE, Reveal } from "@/components/animations/text";
-import { useDemo } from "@/store/demo";
 
 /**
- * A single enormous number, then three live counters. Deliberately sparse so
- * the typography carries the section.
+ * A single enormous number, then one quiet line to let it land. Deliberately
+ * sparse so the typography carries the section — the live counters live in the
+ * impact chapter, not here.
  */
 export function BigStat() {
-  const { stats } = useDemo();
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -17,13 +15,6 @@ export function BigStat() {
     offset: ["start end", "end start"],
   });
   const numberY = useTransform(scrollYProgress, [0, 1], ["12%", "-12%"]);
-
-  const counters = [
-    { value: stats.mealsRescued, suffix: "", label: "Meals rescued" },
-    { value: stats.foodDivertedKg, suffix: " kg", label: "Food diverted" },
-    { value: stats.peopleSupported, suffix: "", label: "People supported" },
-    { value: stats.activeVolunteers, suffix: "", label: "Active volunteers" },
-  ];
 
   return (
     <section
@@ -90,24 +81,11 @@ export function BigStat() {
           </Reveal>
         </div>
 
-        <div className="mt-20 grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2 lg:grid-cols-4">
-          {counters.map((counter, index) => (
-            <motion.div
-              key={counter.label}
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-8% 0px" }}
-              transition={{ duration: 0.8, ease: EASE, delay: index * 0.08 }}
-              className="bg-sand px-6 py-8"
-            >
-              <p className="text-[clamp(1.8rem,4vw,2.9rem)] leading-none font-extrabold tracking-[-0.045em] text-forest">
-                <ImpactCounter value={counter.value} />
-                {counter.suffix}
-              </p>
-              <p className="label-xs mt-4 text-forest/45">{counter.label}</p>
-            </motion.div>
-          ))}
-        </div>
+        <Reveal delay={0.25} className="mt-16 border-t border-forest/12 pt-8">
+          <p className="serif-i max-w-2xl text-[clamp(1.25rem,2.2vw,1.75rem)] leading-[1.35] text-forest/70">
+            Most of it was edible right up to the moment it was thrown out.
+          </p>
+        </Reveal>
       </div>
     </section>
   );

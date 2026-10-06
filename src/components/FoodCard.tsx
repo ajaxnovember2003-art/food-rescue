@@ -56,8 +56,11 @@ export function FoodCard({
       viewport={{ once: true, margin: "-6% 0px" }}
       exit={exit}
       transition={{ duration: 0.75, ease: EASE, delay: (index ?? 0) * 0.05 }}
+      whileHover={{ y: -6, transition: { duration: 0.45, ease: EASE, delay: 0 } }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
       data-cursor="label"
       data-cursor-label="RESCUE"
       className={cn(
@@ -78,8 +81,8 @@ export function FoodCard({
       <div className={cn("relative overflow-hidden", aspect[size])}>
         <motion.div
           className="absolute inset-0"
-          animate={{ scale: hovered ? 1.05 : 1 }}
-          transition={{ duration: 1.1, ease: EASE }}
+          animate={{ scale: hovered ? 1.06 : 1 }}
+          transition={{ duration: 0.7, ease: EASE }}
         >
           <FoodImage
             photo={photoFor(listing.id, listing.category)}
@@ -145,15 +148,21 @@ export function FoodCard({
         </div>
 
         <div className="mt-auto pt-4">
-          <motion.div
-            className="flex items-center justify-between gap-3 border-t border-forest/10 pt-3"
-            initial={false}
-            animate={{ opacity: hovered ? 1 : 0.62 }}
-          >
-            <span className="text-[0.62rem] font-semibold tracking-[0.18em] text-forest/50 uppercase">
+          <div className="flex items-center justify-between gap-3 border-t border-forest/10 pt-3">
+            <motion.span
+              className="text-[0.62rem] font-semibold tracking-[0.18em] text-forest/50 uppercase"
+              initial={false}
+              animate={{ opacity: hovered ? 0.45 : 1, y: hovered ? -2 : 0 }}
+              transition={{ duration: 0.45, ease: EASE }}
+            >
               {listing.pickupArea}
-            </span>
-            <span className="flex items-center gap-2 text-[0.62rem] font-semibold tracking-[0.18em] text-forest uppercase">
+            </motion.span>
+            <motion.span
+              className="flex items-center gap-2 text-[0.62rem] font-semibold tracking-[0.18em] text-forest uppercase"
+              initial={false}
+              animate={{ opacity: hovered ? 1 : 0, x: hovered ? 0 : 10 }}
+              transition={{ duration: 0.45, ease: EASE }}
+            >
               Rescue
               <motion.span
                 className="block h-px bg-ember"
@@ -161,8 +170,8 @@ export function FoodCard({
                 animate={{ width: hovered ? 26 : 10 }}
                 transition={{ duration: 0.5, ease: EASE }}
               />
-            </span>
-          </motion.div>
+            </motion.span>
+          </div>
         </div>
       </div>
     </motion.article>

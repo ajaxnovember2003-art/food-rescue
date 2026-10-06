@@ -175,8 +175,10 @@
   [role="button"]:not([disabled]) {
     cursor: pointer;
   }
+  /* currentColor keeps the ring visible on both the ivory and forest halves
+     of the site — a fixed forest ring disappears against dark sections. */
   :focus-visible {
-    outline: 2px solid var(--forest);
+    outline: 2px solid currentColor;
     outline-offset: 3px;
   }
 }
@@ -184,7 +186,9 @@
 @layer utilities {
   /* Editorial type scale */
   .display-xl {
-    font-size: clamp(2.4rem, 9vw, 9.5rem);
+    /* 10vw keeps the statement large on phones while the 2.15rem floor keeps
+       "SHOULD never" inside a 320px viewport without clipping. */
+    font-size: clamp(2.15rem, 10vw, 9.5rem);
     line-height: 0.88;
     letter-spacing: -0.045em;
     font-weight: 800;

@@ -480,6 +480,13 @@ export const rescueJourney = [
     kicker: "Meals reach people today",
     body: "The drop-off is confirmed, the listing closes, and the rescued meals move from surplus into impact.",
   },
+  {
+    id: "impact",
+    index: "05",
+    title: "Impact",
+    kicker: "The tally moves",
+    body: "Meals served, kilograms diverted and CO₂ avoided are counted the moment the delivery closes — for the network and for everyone who moved it.",
+  },
 ] as const;
 
 export const howItWorks = [

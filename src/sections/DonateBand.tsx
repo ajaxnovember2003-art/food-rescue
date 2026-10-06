@@ -81,11 +81,11 @@ export function DonateBand() {
               </a>
             </div>
 
-            <ul className="mt-12 grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-3">
+            <ul className="mt-12 flex flex-wrap gap-x-10 gap-y-5 border-t border-forest/12 pt-6">
               {steps.map((step) => (
-                <li key={step.index} className="bg-sand px-4 py-5">
+                <li key={step.index} className="flex items-baseline gap-3">
                   <span className="label-xs text-ember">{step.index}</span>
-                  <span className="mt-2 block text-[0.85rem] font-medium text-forest/75">
+                  <span className="text-[0.85rem] font-medium text-forest/75">
                     {step.label}
                   </span>
                 </li>

@@ -1,4 +1,5 @@
 import { Hero } from "@/sections/Hero";
+import { HeroBridge } from "@/sections/HeroBridge";
 import { Problem } from "@/sections/Problem";
 import { BigStat } from "@/sections/BigStat";
 import { RescueStory } from "@/sections/RescueStory";
@@ -19,6 +20,7 @@ export default function Landing() {
   return (
     <>
       <Hero />
+      <HeroBridge />
       <Problem />
       <BigStat />
       <RescueStory />

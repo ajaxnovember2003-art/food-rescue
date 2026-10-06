@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const stations = ["Donor", "Match", "Volunteer", "Community", "Impact"];
+/** Station names come straight from the journey, so the track, dots and the
+ *  columns below all describe the same five states. */
+const stations = rescueJourney.map((item) => item.title);
 
 /**
  * The centrepiece: a pinned, scroll-scrubbed sequence where a food box travels
@@ -22,6 +24,13 @@ export function RescueStory() {
   const boxRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState(0);
+  const [pinned, setPinned] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(
+        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+      ).matches,
+  );
   const stageRef = useRef(0);
 
   useEffect(() => {
@@ -35,8 +44,9 @@ export function RescueStory() {
         const fill = fillRef.current;
         const section = sectionRef.current;
         if (!track || !box || !fill || !section) return;
+        setPinned(true);
 
-        const distance = () => Math.max(0, track.clientWidth - 52);
+        const distance = () => Math.max(0, track.clientWidth);
 
         const timeline = gsap.timeline({
           scrollTrigger: {
@@ -48,9 +58,10 @@ export function RescueStory() {
             anticipatePin: 1,
             invalidateOnRefresh: true,
             onUpdate: (self) => {
-              const next = Math.min(
-                rescueJourney.length - 1,
-                Math.floor(self.progress * rescueJourney.length),
+              // Station dots sit at i/(n-1) along the track, so the active
+              // stage is whichever station the parcel has most recently passed.
+              const next = Math.round(
+                self.progress * (rescueJourney.length - 1),
               );
               if (next !== stageRef.current) {
                 stageRef.current = next;
@@ -74,6 +85,7 @@ export function RescueStory() {
         );
 
         return () => {
+          setPinned(false);
           timeline.scrollTrigger?.kill();
           timeline.kill();
         };
@@ -85,7 +97,7 @@ export function RescueStory() {
 
   return (
     <section
-      id="how-it-works"
+      id="rescue-story"
       ref={sectionRef}
       className="relative overflow-hidden bg-forest py-24 text-ivory lg:flex lg:h-screen lg:flex-col lg:justify-center lg:py-0"
     >
@@ -142,30 +154,33 @@ export function RescueStory() {
 
         {/* Desktop: scrubbed track */}
         <div className="mt-16 hidden lg:block">
-          <div ref={trackRef} className="relative h-24">
+          <div ref={trackRef} className="relative h-24 w-[calc(80%+1.2rem)]">
             <div className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-ivory/12" />
             <div
               ref={fillRef}
               className="absolute top-1/2 left-0 h-px w-full origin-left -translate-y-1/2 bg-ember"
             />
-            {stations.map((station, index) => (
-              <div
-                key={station}
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${(index / (stations.length - 1)) * 100}%` }}
-              >
-                <span
-                  className={cn(
-                    "block size-1.5 rounded-full transition-colors duration-500",
-                    index <= stage ? "bg-ember" : "bg-ivory/30",
-                  )}
-                />
-                <span className="label-xs mt-3 block -translate-x-1/2 text-center whitespace-nowrap text-ivory/45">
-                  {station}
-                </span>
-              </div>
-            ))}
-            <div ref={boxRef} className="absolute top-1/2 left-0">
+            {stations.map((station, index) => {
+              const lit = pinned ? index <= stage : true;
+              return (
+                <div
+                  key={station}
+                  className="absolute top-1/2 -translate-x-1/2"
+                  style={{ left: `${(index / (stations.length - 1)) * 100}%` }}
+                >
+                  <span
+                    className={cn(
+                      "mx-auto block size-1.5 -translate-y-1/2 rounded-full transition-colors duration-500",
+                      lit ? "bg-ember" : "bg-ivory/30",
+                    )}
+                  />
+                  <span className="label-xs mt-6 block text-center whitespace-nowrap text-ivory/45">
+                    {station}
+                  </span>
+                </div>
+              );
+            })}
+            <div ref={boxRef} className="absolute top-1/2 -left-[26px]">
               <div className="flex size-[52px] -translate-y-1/2 items-center justify-center rounded-sm border border-ivory/25 bg-forest-deep/80 backdrop-blur-sm">
                 <div className="relative size-7">
                   <span className="absolute inset-x-0 bottom-0 h-3.5 rounded-b-[3px] bg-ivory/90" />
@@ -176,17 +191,11 @@ export function RescueStory() {
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-4 gap-6 border-t border-ivory/12 pt-8">
+          <div className="mt-10 grid grid-cols-5 gap-6 border-t border-ivory/12 pt-8">
             {rescueJourney.map((item, index) => {
-              const active = index === stage;
+              const active = pinned ? index === stage : true;
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setStage(index)}
-                  data-cursor="hover"
-                  className="text-left"
-                >
+                <div key={item.id} className="text-left">
                   <span
                     className={cn(
                       "block h-px w-full origin-left transition-transform duration-700",
@@ -196,7 +205,7 @@ export function RescueStory() {
                   <span
                     className={cn(
                       "mt-5 block text-[0.62rem] font-semibold tracking-[0.2em] uppercase transition-colors duration-500",
-                      active ? "text-ember" : "text-ivory/35",
+                      active ? "text-ember" : "text-ivory/45",
                     )}
                   >
                     {item.index}
@@ -204,7 +213,7 @@ export function RescueStory() {
                   <span
                     className={cn(
                       "mt-2 block text-[1.35rem] font-extrabold tracking-[-0.03em] uppercase transition-colors duration-500",
-                      active ? "text-ivory" : "text-ivory/40",
+                      active ? "text-ivory" : "text-ivory/45",
                     )}
                   >
                     {item.title}
@@ -222,10 +231,15 @@ export function RescueStory() {
                       {item.body}
                     </span>
                   </motion.span>
-                  <span className="mt-3 block text-[0.72rem] text-ivory/40">
+                  <span
+                    className={cn(
+                      "mt-3 block text-[0.72rem] transition-colors duration-500",
+                      active ? "text-ivory/60" : "text-ivory/45",
+                    )}
+                  >
                     {item.kicker}
                   </span>
-                </button>
+                </div>
               );
             })}
           </div>
