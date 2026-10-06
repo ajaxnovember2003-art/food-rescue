@@ -9,7 +9,8 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "sonner";
-import { FoodArtwork } from "@/components/FoodArtwork";
+import { FoodImage } from "@/components/FoodImage";
+import { photoFor } from "@/data/photos";
 import { PageHero, Panel } from "@/components/PageHero";
 import { ImpactCounter } from "@/components/animations/ImpactCounter";
 import { MagneticButton } from "@/components/animations/MagneticButton";
@@ -86,10 +87,13 @@ export default function Volunteer() {
             {mission ? (
               <div className="overflow-hidden rounded-sm border border-forest/12 bg-[#fffdf8]">
                 <div className="relative aspect-[16/9]">
-                  <FoodArtwork
+                  <FoodImage
+                    photo={photoFor(mission.id, mission.category)}
                     category={mission.category}
                     hue={mission.hue}
                     seed={mission.servings}
+                    eager
+                    sizes="(max-width: 1024px) 92vw, 55vw"
                   />
                   <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-between gap-3 p-5">
                     <UrgencyBadge minutes={mission.minutesLeft} />

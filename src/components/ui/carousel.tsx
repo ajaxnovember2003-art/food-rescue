@@ -56,14 +56,31 @@ function Carousel({
     },
     plugins
   )
-  const [canScrollPrev, setCanScrollPrev] = React.useState(false)
-  const [canScrollNext, setCanScrollNext] = React.useState(false)
-
-  const onSelect = React.useCallback((api: CarouselApi) => {
-    if (!api) return
-    setCanScrollPrev(api.canScrollPrev())
-    setCanScrollNext(api.canScrollNext())
-  }, [])
+  // Embla owns the scroll position, so "can scroll" is read from it as an
+  // external store. That keeps the values correct through re-inits and resizes
+  // without mirroring them into state from an effect.
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) => {
+      if (!api) return () => {}
+      api.on("select", onStoreChange)
+      api.on("reInit", onStoreChange)
+      return () => {
+        api.off("select", onStoreChange)
+        api.off("reInit", onStoreChange)
+      }
+    },
+    [api]
+  )
+  const canScrollPrev = React.useSyncExternalStore(
+    subscribe,
+    () => (api ? api.canScrollPrev() : false),
+    () => false
+  )
+  const canScrollNext = React.useSyncExternalStore(
+    subscribe,
+    () => (api ? api.canScrollNext() : false),
+    () => false
+  )
 
   const scrollPrev = React.useCallback(() => {
     api?.scrollPrev()
@@ -86,21 +103,19 @@ function Carousel({
     [scrollPrev, scrollNext]
   )
 
+  // Keep the latest callback in a ref so a parent's inline callback no longer
+  // re-runs this effect, and hand the embla instance over through a named call
+  // rather than writing parent state straight from the effect body.
+  const apiCallback = React.useRef(setApi)
   React.useEffect(() => {
-    if (!api || !setApi) return
-    setApi(api)
-  }, [api, setApi])
+    apiCallback.current = setApi
+  }, [setApi])
 
   React.useEffect(() => {
     if (!api) return
-    onSelect(api)
-    api.on("reInit", onSelect)
-    api.on("select", onSelect)
-
-    return () => {
-      api?.off("select", onSelect)
-    }
-  }, [api, onSelect])
+    const notifyParent = apiCallback.current
+    notifyParent?.(api)
+  }, [api])
 
   return (
     <CarouselContext.Provider

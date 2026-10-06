@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useNavigate, useParams } from "react-router";
-import { FoodArtwork } from "@/components/FoodArtwork";
+import { FoodImage } from "@/components/FoodImage";
+import { photoFor } from "@/data/photos";
 import { FoodCard } from "@/components/FoodCard";
 import { Panel } from "@/components/PageHero";
 import { MagneticButton } from "@/components/animations/MagneticButton";
@@ -111,10 +112,13 @@ export default function FoodDetail() {
                   layoutId={`food-card-${listing.id}`}
                   className="h-full w-full"
                 >
-                  <FoodArtwork
+                  <FoodImage
+                    photo={photoFor(listing.id, listing.category)}
                     category={listing.category}
                     hue={listing.hue}
                     seed={listing.servings}
+                    eager
+                    sizes="(max-width: 1024px) 92vw, 45vw"
                   />
                 </motion.div>
               </RevealImage>

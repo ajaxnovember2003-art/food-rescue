@@ -6,7 +6,8 @@ import {
   type MotionValue,
 } from "framer-motion";
 import { useRef } from "react";
-import { FoodArtwork } from "@/components/FoodArtwork";
+import { FoodImage } from "@/components/FoodImage";
+import { photoAt, type FoodPhoto } from "@/data/photos";
 import { EASE, Reveal } from "@/components/animations/text";
 import { problemFacts } from "@/data/mock";
 import type { FoodCategory } from "@/types";
@@ -15,24 +16,28 @@ const pile: Array<{
   category: FoodCategory;
   hue: number;
   label: string;
+  photo: FoodPhoto;
   from: { x: number; y: number; rotate: number };
 }> = [
   {
     category: "meals",
     hue: 152,
     label: "Buffet surplus",
+    photo: photoAt("meals", 1),
     from: { x: -2.5, y: -52, rotate: -9 },
   },
   {
     category: "bakery",
     hue: 34,
     label: "Unsold bakery",
+    photo: photoAt("bakery", 1),
     from: { x: 2, y: -68, rotate: 6 },
   },
   {
     category: "fruits",
     hue: 62,
     label: "Cosmetic fruit",
+    photo: photoAt("fruits", 2),
     from: { x: -1.5, y: -38, rotate: -5 },
   },
 ];
@@ -61,7 +66,13 @@ function SurplusCard({
       className="group relative overflow-hidden rounded-sm border border-forest/15 bg-[#fffdf8]"
     >
       <div className="aspect-[4/3] overflow-hidden">
-        <FoodArtwork category={item.category} hue={item.hue} seed={index + 3} />
+        <FoodImage
+          photo={item.photo}
+          category={item.category}
+          hue={item.hue}
+          seed={index + 3}
+          sizes="(max-width: 1024px) 92vw, 30vw"
+        />
       </div>
       <div className="flex items-center justify-between px-4 py-3">
         <span className="text-[0.68rem] font-semibold tracking-[0.16em] text-forest/50 uppercase">

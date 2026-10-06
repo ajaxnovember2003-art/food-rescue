@@ -2,7 +2,8 @@ import { motion, type TargetAndTransition } from "framer-motion";
 import { MapPin, ShieldCheck, Timer } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { FoodArtwork } from "@/components/FoodArtwork";
+import { FoodImage } from "@/components/FoodImage";
+import { photoFor } from "@/data/photos";
 import { UrgencyBadge } from "@/components/StatusBadge";
 import { EASE } from "@/components/animations/text";
 import { countdownLabel } from "@/lib/format";
@@ -80,10 +81,12 @@ export function FoodCard({
           animate={{ scale: hovered ? 1.05 : 1 }}
           transition={{ duration: 1.1, ease: EASE }}
         >
-          <FoodArtwork
+          <FoodImage
+            photo={photoFor(listing.id, listing.category)}
             category={listing.category}
             hue={listing.hue}
             seed={listing.servings}
+            sizes="(max-width: 640px) 92vw, (max-width: 1024px) 48vw, 40vw"
           />
         </motion.div>
 

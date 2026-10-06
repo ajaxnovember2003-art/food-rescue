@@ -9,7 +9,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
-import { FoodArtwork } from "@/components/FoodArtwork";
+import { FoodImage } from "@/components/FoodImage";
+import { photoAt } from "@/data/photos";
 import { PageHero } from "@/components/PageHero";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { EASE } from "@/components/animations/text";
@@ -447,7 +448,8 @@ export default function Donate() {
                   <div className="lg:sticky lg:top-28">
                     <div className="overflow-hidden rounded-sm border border-forest/12 bg-[#fffdf8]">
                       <div className="relative aspect-[16/11] overflow-hidden">
-                        <FoodArtwork
+                        <FoodImage
+                          photo={photoAt(draft.category, 0)}
                           category={draft.category}
                           hue={
                             categories.findIndex(
@@ -457,6 +459,8 @@ export default function Donate() {
                             34
                           }
                           seed={draft.servings}
+                          tint={0.12}
+                          sizes="(max-width: 1024px) 92vw, 40vw"
                         />
                         <span className="absolute bottom-3 left-3 rounded-full border border-ivory/25 bg-forest-deep/50 px-3 py-1 text-[0.6rem] font-semibold tracking-[0.16em] text-ivory uppercase backdrop-blur-sm">
                           Live preview

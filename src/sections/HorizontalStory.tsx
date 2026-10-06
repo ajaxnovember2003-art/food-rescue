@@ -1,7 +1,8 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useEffect, useRef } from "react";
-import { FoodArtwork } from "@/components/FoodArtwork";
+import { FoodImage } from "@/components/FoodImage";
+import { photoAt, type FoodPhoto } from "@/data/photos";
 import type { FoodCategory } from "@/types";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -14,6 +15,7 @@ const chapters: Array<{
   stat: string;
   category: FoodCategory;
   hue: number;
+  photo: FoodPhoto;
 }> = [
   {
     id: "surplus",
@@ -23,6 +25,7 @@ const chapters: Array<{
     stat: "40 sec to list",
     category: "meals",
     hue: 152,
+    photo: photoAt("meals", 0),
   },
   {
     id: "match",
@@ -32,6 +35,7 @@ const chapters: Array<{
     stat: "24 min to match",
     category: "bakery",
     hue: 34,
+    photo: photoAt("bakery", 0),
   },
   {
     id: "rescue",
@@ -41,6 +45,7 @@ const chapters: Array<{
     stat: "14 min to accept",
     category: "vegetables",
     hue: 118,
+    photo: photoAt("vegetables", 0),
   },
   {
     id: "deliver",
@@ -50,6 +55,7 @@ const chapters: Array<{
     stat: "Same-day service",
     category: "fruits",
     hue: 62,
+    photo: photoAt("fruits", 1),
   },
   {
     id: "impact",
@@ -59,6 +65,7 @@ const chapters: Array<{
     stat: "1.24 t CO₂ avoided",
     category: "packaged",
     hue: 210,
+    photo: photoAt("packaged", 1),
   },
 ];
 
@@ -141,10 +148,12 @@ export function HorizontalStory() {
                 <article className="group flex h-full flex-col overflow-hidden rounded-sm border border-forest/12 bg-[#fffdf8] transition-colors duration-500 hover:border-forest/30 lg:h-[56vh] lg:max-h-[520px] lg:flex-row">
                   <div className="relative w-full overflow-hidden lg:w-[46%]">
                     <div className="aspect-[16/10] lg:aspect-auto lg:h-full">
-                      <FoodArtwork
+                      <FoodImage
+                        photo={chapter.photo}
                         category={chapter.category}
                         hue={chapter.hue}
                         seed={index + 11}
+                        sizes="(max-width: 1024px) 92vw, 22vw"
                       />
                     </div>
                     <span className="absolute top-4 left-4 rounded-full border border-ivory/25 bg-forest-deep/50 px-3 py-1 text-[0.6rem] font-semibold tracking-[0.18em] text-ivory uppercase backdrop-blur-sm">

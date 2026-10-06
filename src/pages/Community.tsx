@@ -1,9 +1,11 @@
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { FoodImage } from "@/components/FoodImage";
 import { PageHero, Panel } from "@/components/PageHero";
+import { communityPhoto } from "@/data/photos";
 import { MagneticButton } from "@/components/animations/MagneticButton";
-import { EASE } from "@/components/animations/text";
+import { EASE, Reveal } from "@/components/animations/text";
 import { people } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
@@ -83,6 +85,38 @@ export default function Community() {
 
       <section className="bg-ivory pb-28">
         <div className="shell">
+          <Reveal>
+            <div className="relative mb-12 overflow-hidden rounded-sm">
+              <div className="aspect-[16/10] sm:aspect-[21/9]">
+                <FoodImage
+                  photo={communityPhoto}
+                  category="packaged"
+                  hue={150}
+                  seed={31}
+                  tint={0.24}
+                  sizes="100vw"
+                />
+              </div>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(5,23,19,0) 40%, rgba(5,23,19,0.8) 100%)",
+                }}
+              />
+              <div className="absolute inset-x-5 bottom-5 flex flex-wrap items-end justify-between gap-4">
+                <p className="max-w-md text-[0.85rem] leading-relaxed text-ivory/85 sm:text-[0.95rem]">
+                  Packing the evening routes — volunteers collect inside each
+                  safe window and hand the food straight to a kitchen.
+                </p>
+                <span className="label-xs text-ivory/50">
+                  {communityPhoto.credit}
+                </span>
+              </div>
+            </div>
+          </Reveal>
+
           <LayoutGroup>
             <motion.div
               layout

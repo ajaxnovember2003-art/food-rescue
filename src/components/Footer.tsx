@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { DemoControl } from "@/components/DemoControl";
 import { EASE } from "@/components/animations/text";
+import { photoCredits } from "@/data/photos";
 
 const columns = [
   {
@@ -122,10 +123,28 @@ export function Footer() {
 
       <div className="shell mt-6 flex flex-col gap-4 border-t border-ivory/10 py-8 text-[0.72rem] text-ivory/45 md:flex-row md:items-center md:justify-between">
         <p>© {new Date().getFullYear()} FoodRescue — concept product.</p>
-        <p className="max-w-md md:text-center">
-          Frontend prototype for competition demonstration. Statistics shown are
-          illustrative mock data.
-        </p>
+        <div className="max-w-md md:text-center">
+          <p>
+            Frontend prototype for competition demonstration. Statistics shown
+            are illustrative mock data.
+          </p>
+          <p className="mt-2">
+            Photography (CC0 / public domain):{" "}
+            {photoCredits.map((credit, index) => (
+              <span key={credit.label}>
+                <a
+                  href={credit.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 transition-colors hover:text-ember"
+                >
+                  {credit.label}
+                </a>
+                {index < photoCredits.length - 1 ? ", " : ""}
+              </span>
+            ))}
+          </p>
+        </div>
         <DemoControl />
       </div>
     </footer>

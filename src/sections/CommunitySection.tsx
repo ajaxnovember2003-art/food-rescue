@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
+import { FoodImage } from "@/components/FoodImage";
+import { communityPhoto } from "@/data/photos";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { SectionHeading } from "@/components/SectionHeading";
 import { EASE, Reveal } from "@/components/animations/text";
@@ -35,7 +37,39 @@ export function CommunitySection() {
           }
         />
 
-        <div className="mt-16 grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2 lg:grid-cols-3">
+        <Reveal className="mt-14">
+          <div className="relative overflow-hidden rounded-sm">
+            <div className="aspect-[16/9] sm:aspect-[21/9]">
+              <FoodImage
+                photo={communityPhoto}
+                category="packaged"
+                hue={150}
+                seed={21}
+                tint={0.24}
+                sizes="100vw"
+              />
+            </div>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(5,23,19,0) 38%, rgba(5,23,19,0.82) 100%)",
+              }}
+            />
+            <div className="absolute inset-x-5 bottom-5 flex flex-wrap items-end justify-between gap-4">
+              <p className="max-w-md text-[0.85rem] leading-relaxed text-ivory/85 sm:text-[0.95rem]">
+                Volunteers packing the evening routes in Riverside — 128 riders
+                keep the network moving after service closes.
+              </p>
+              <span className="label-xs text-ivory/50">
+                {communityPhoto.credit}
+              </span>
+            </div>
+          </div>
+        </Reveal>
+
+        <div className="mt-8 grid gap-px overflow-hidden rounded-sm border border-forest/12 bg-forest/12 sm:grid-cols-2 lg:grid-cols-3">
           {featured.map((person, index) => (
             <motion.article
               key={person.id}

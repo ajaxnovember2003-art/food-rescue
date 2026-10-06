@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { FoodArtwork } from "@/components/FoodArtwork";
+import { FoodImage } from "@/components/FoodImage";
+import { heroPhoto } from "@/data/photos";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { RevealImage } from "@/components/animations/RevealImage";
 import { EASE, Reveal } from "@/components/animations/text";
@@ -102,7 +103,14 @@ export function DonateBand() {
                 animate={{ scale: hovered ? 1.04 : 1 }}
                 transition={{ duration: 1.2, ease: EASE }}
               >
-                <FoodArtwork category="meals" hue={150} seed={7} />
+                <FoodImage
+                  photo={heroPhoto}
+                  category="meals"
+                  hue={150}
+                  seed={7}
+                  tint={0.12}
+                  sizes="(max-width: 1024px) 92vw, 45vw"
+                />
               </motion.div>
             </RevealImage>
 
@@ -117,7 +125,7 @@ export function DonateBand() {
                   hovered ? "text-forest" : "text-forest/45",
                 )}
               >
-                Image: Freshly prepared meal trays
+                {heroPhoto.credit}
               </span>
             </div>
           </div>
