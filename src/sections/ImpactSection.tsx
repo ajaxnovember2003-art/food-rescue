@@ -42,13 +42,13 @@ export function ImpactSection() {
   // The "your last rescue" delta fades up whenever a new one lands.
   useEffect(() => {
     const element = deltaRef.current;
-    if (!element) return;
+    if (!element || reduce) return;
     gsap.fromTo(
       element,
       { opacity: 0, y: 10 },
       { opacity: 1, y: 0, duration: 0.5, ease: EASE },
     );
-  }, [deltaKey]);
+  }, [deltaKey, reduce]);
 
   return (
     <section className="relative overflow-hidden bg-forest-deep py-24 text-ivory md:py-32">

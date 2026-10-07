@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link } from "react-router";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { gsap } from "@/lib/gsap";
 import { cn } from "@/lib/utils";
 
@@ -60,10 +61,17 @@ export function MagneticButton({
     x: (value: number) => void;
     y: (value: number) => void;
   } | null>(null);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
+    if (reduce) {
+      // The pull is decoration; reduced motion keeps the button still (and
+      // clears any offset left over if the preference changes mid-session).
+      gsap.set(node, { x: 0, y: 0 });
+      return;
+    }
     movers.current = {
       x: gsap.quickTo(node, "x", { duration: 0.5, ease: "power3.out" }),
       y: gsap.quickTo(node, "y", { duration: 0.5, ease: "power3.out" }),
@@ -71,9 +79,10 @@ export function MagneticButton({
     return () => {
       movers.current = null;
     };
-  }, []);
+  }, [reduce]);
 
   const handleMove = (event: ReactMouseEvent) => {
+    if (reduce) return;
     const node = ref.current;
     if (!node) return;
     const rect = node.getBoundingClientRect();

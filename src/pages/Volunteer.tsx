@@ -66,16 +66,33 @@ export default function Volunteer() {
       : currentIndex / (stageOrder.length - 1)
     : 0;
 
-  // The mission rule fills as each stage completes.
+  // The mission rule fills as each stage completes. React writes the new
+  // progress into the bar's inline transform before this effect runs, so the
+  // tween has to start from the previous progress explicitly — reading it back
+  // from the DOM would give start === end and the bar would simply snap.
+  const barPrevRef = useRef({
+    id: mission?.id ?? null,
+    progress: stageProgress,
+  });
   useIsoLayoutEffect(() => {
     const el = barRef.current;
     if (!el || !mission || reduce) return;
-    const tween = gsap.to(el, {
-      scaleX: stageProgress,
-      transformOrigin: "left center",
-      duration: 0.9,
-      ease: EASE,
-    });
+    const previous = barPrevRef.current;
+    barPrevRef.current = { id: mission.id, progress: stageProgress };
+    if (previous.id !== mission.id || previous.progress === stageProgress) {
+      gsap.set(el, { scaleX: stageProgress, transformOrigin: "left center" });
+      return;
+    }
+    const tween = gsap.fromTo(
+      el,
+      { scaleX: previous.progress },
+      {
+        scaleX: stageProgress,
+        transformOrigin: "left center",
+        duration: 0.9,
+        ease: EASE,
+      },
+    );
     return () => {
       tween.kill();
     };

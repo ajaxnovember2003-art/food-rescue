@@ -204,16 +204,23 @@ export function FoodCard({
             >
               {listing.pickupArea}
             </span>
+            {/* The hidden rest state only exists while motion is allowed: the
+                tween that reveals it is skipped under reduced motion, so
+                hiding it would leave this label permanently invisible. */}
             <span
               data-card-cta
               className="flex items-center gap-2 text-[0.62rem] font-semibold tracking-[0.18em] text-forest uppercase"
-              style={{ opacity: 0, transform: "translateX(10px)" }}
+              style={
+                reduce
+                  ? undefined
+                  : { opacity: 0, transform: "translateX(10px)" }
+              }
             >
               Rescue
               <span
                 data-card-rule
                 className="block h-px bg-ember"
-                style={{ width: 10 }}
+                style={{ width: reduce ? 24 : 10 }}
               />
             </span>
           </div>

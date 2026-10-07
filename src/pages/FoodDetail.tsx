@@ -81,22 +81,37 @@ export default function FoodDetail() {
     };
   }, [id, reduce]);
 
-  // The four stage rules draw themselves in and then track the listing's
-  // progress: advancing a stage animates the next rule open.
+  // The four stage rules draw themselves in on arrival and then track the
+  // listing's progress. React writes the new state into every rule's inline
+  // transform before this effect runs, so only the rules whose state actually
+  // changed are tweened — running a from-zero tween over all of them would
+  // visibly collapse the filled rules and refill them on every stage advance.
+  const previousStageRef = useRef(-1);
   useIsoLayoutEffect(() => {
     const root = stagesRef.current;
-    if (!root || reduce) return;
+    if (!root || reduce) {
+      previousStageRef.current = currentIndex;
+      return;
+    }
     const bars = gsap.utils.toArray<HTMLElement>("[data-stage-bar]", root);
+    const previous = previousStageRef.current;
+    previousStageRef.current = currentIndex;
     bars.forEach((bar, index) => {
+      const from = index <= previous ? 1 : 0;
+      const to = index <= currentIndex ? 1 : 0;
+      if (from === to) {
+        gsap.set(bar, { scaleX: to, transformOrigin: "left center" });
+        return;
+      }
       gsap.fromTo(
         bar,
-        { scaleX: 0 },
+        { scaleX: from },
         {
-          scaleX: index <= currentIndex ? 1 : 0,
+          scaleX: to,
           transformOrigin: "left center",
           duration: 0.8,
           ease: EASE,
-          delay: index * 0.12,
+          delay: Math.max(0, (index - previous - 1) * 0.12),
         },
       );
     });
