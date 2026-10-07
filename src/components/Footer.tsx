@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { Link } from "react-router";
 import { Logo } from "@/components/Logo";
 import { DemoControl } from "@/components/DemoControl";
 import { Reveal } from "@/components/animations/text";
@@ -98,14 +99,14 @@ export function Footer() {
             <ul className="mt-5 space-y-3">
               {column.links.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.to}
+                  <Link
+                    to={link.to}
                     data-cursor="hover"
                     className="group inline-flex items-center gap-1.5 text-[0.88rem] text-ivory/75 transition-colors hover:text-ember"
                   >
                     {link.label}
                     <ArrowUpRight className="size-3.5 -translate-y-0.5 opacity-0 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-1 group-hover:opacity-100" />
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

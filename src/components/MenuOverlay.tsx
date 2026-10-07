@@ -1,5 +1,6 @@
 import { ArrowUpRight, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { Link } from "react-router";
 import { Logo } from "@/components/Logo";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -141,9 +142,9 @@ export function MenuOverlay({
         >
           {primaryNav.map((nav, index) => (
             <div key={nav.label} className="overflow-hidden py-1">
-              <a
+              <Link
                 data-menu-item
-                href={nav.to}
+                to={nav.to}
                 onClick={onClose}
                 className="group flex items-baseline gap-4 py-1"
               >
@@ -154,7 +155,7 @@ export function MenuOverlay({
                   {nav.label}
                 </span>
                 <ArrowUpRight className="size-5 -translate-x-2 opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100" />
-              </a>
+              </Link>
             </div>
           ))}
         </nav>
@@ -162,14 +163,14 @@ export function MenuOverlay({
         <div className="mt-12 grid gap-8 border-t border-ivory/12 pt-8 md:grid-cols-2">
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {workspaceNav.map((nav) => (
-              <a
+              <Link
                 key={nav.label}
-                href={nav.to}
+                to={nav.to}
                 onClick={onClose}
                 className="text-[0.72rem] font-semibold tracking-[0.16em] text-ivory/60 uppercase transition-colors hover:text-ember"
               >
                 {nav.label}
-              </a>
+              </Link>
             ))}
           </div>
           <div className="flex items-end justify-between gap-6">

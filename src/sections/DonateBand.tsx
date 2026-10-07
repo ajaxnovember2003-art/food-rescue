@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { Link } from "react-router";
 import { FoodImage } from "@/components/FoodImage";
 import { heroPhoto } from "@/data/photos";
 import { MagneticButton } from "@/components/animations/MagneticButton";
@@ -71,14 +72,14 @@ export function DonateBand() {
               <MagneticButton to="/donate" cursorLabel="DONATE">
                 Donate food
               </MagneticButton>
-              <a
-                href="/rescue"
+              <Link
+                to="/rescue"
                 data-cursor="hover"
                 className="group inline-flex items-center gap-2 text-[0.7rem] font-semibold tracking-[0.2em] text-forest uppercase"
               >
                 <span className="link-underline">Or rescue instead</span>
                 <ArrowUpRight className="size-3.5 transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </a>
+              </Link>
             </div>
 
             <ul className="mt-12 flex flex-wrap gap-x-10 gap-y-5 border-t border-forest/12 pt-6">

@@ -1,4 +1,8 @@
 .env.local
 node_modules
 dist
-src/convex/_generated
+
+# src/convex/_generated is intentionally committed. src/hooks/use-auth.ts
+# imports it as a runtime value, so a build without it cannot resolve the
+# module at all. Committing it keeps CI from needing a Convex deploy key.
+# Re-run `bun convex dev` and re-commit after changing Convex functions.

@@ -45,7 +45,10 @@ createRoot(document.getElementById("root")!).render(
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
         <DemoProvider>
-          <BrowserRouter>
+          {/* basename keeps client routing correct when the app is served from
+              a subpath (GitHub Pages project sites); it is "/" in dev, so this
+              is a no-op locally. */}
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
             <RouteSyncer />
             <Suspense fallback={<RouteLoading />}>
               <Routes>

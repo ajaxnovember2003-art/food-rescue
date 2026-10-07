@@ -1,6 +1,6 @@
 import { Menu } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Logo } from "@/components/Logo";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -76,9 +76,9 @@ export function Navbar({
                 ? pathname === "/"
                 : pathname.startsWith(item.to.split("#")[0]);
             return (
-              <a
+              <Link
                 key={item.label}
-                href={item.to}
+                to={item.to}
                 data-cursor="hover"
                 className={cn(
                   "relative text-[0.72rem] font-semibold tracking-[0.16em] uppercase transition-colors duration-300 hover:text-ember",
@@ -86,7 +86,7 @@ export function Navbar({
                 )}
               >
                 {item.label}
-              </a>
+              </Link>
             );
           })}
         </nav>
