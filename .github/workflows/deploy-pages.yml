@@ -1,0 +1,67 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # src/convex/_generated is gitignored, but src/hooks/use-auth.ts imports
+      # it as a runtime value — without regenerating it here both the typecheck
+      # and the bundle fail on a fresh checkout.
+      - name: Generate Convex client
+        run: bunx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+
+      - run: bunx tsc -b
+
+      - uses: actions/configure-pages@v5
+
+      # /food-rescue/ is required: this is a project page served from a
+      # subpath, so Vite's default base of "/" would 404 every asset.
+      # Change to "/" if you ever attach a custom domain.
+      - name: Build
+        run: bunx vite build --base=/food-rescue/
+        env:
+          # main.tsx reads this at module scope with no fallback.
+          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+
+      # GitHub Pages has no rewrite rules, so ship index.html as 404.html or
+      # any deep link (e.g. /food-rescue/rescue) returns the Pages 404.
+      - name: Add SPA fallback
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
