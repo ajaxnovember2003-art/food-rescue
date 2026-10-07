@@ -26,16 +26,18 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      # Fail loudly instead of shipping a blank page: main.tsx constructs the
-      # Convex client at module scope with no fallback, so an empty value
-      # breaks the app before anything renders.
-      - name: Check build configuration
+      # main.tsx constructs the Convex client at module scope with no fallback,
+      # and ConvexReactClient throws on an invalid address — so a missing value
+      # renders a blank page rather than failing the build. The build step below
+      # falls back to this project's own deployment, so this is only a notice.
+      - name: Resolve build configuration
         env:
           VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
         run: |
           if [ -z "$VITE_CONVEX_URL" ]; then
-            echo "::error::Repository variable VITE_CONVEX_URL is not set (Settings -> Secrets and variables -> Actions -> Variables)."
-            exit 1
+            echo "::notice::Repository variable VITE_CONVEX_URL is not set. Using the project's default Convex deployment. Set it under Settings -> Secrets and variables -> Actions -> Variables to point the site at a production deployment."
+          else
+            echo "Using VITE_CONVEX_URL from repository variables."
           fi
 
       - run: bunx tsc -b
@@ -48,7 +50,10 @@ jobs:
       - name: Build
         run: bunx vite build --base=/food-rescue/
         env:
-          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+          # The repository variable wins when set; the literal is this project's
+          # Convex deployment and is public client configuration either way
+          # (the value ships inside the browser bundle).
+          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL || 'https://quiet-salamander-408.convex.cloud' }}
 
       # GitHub Pages has no rewrite rules, so ship index.html as 404.html or
       # any deep link (e.g. /food-rescue/rescue) returns the Pages 404.
