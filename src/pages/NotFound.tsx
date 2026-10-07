@@ -1,13 +1,19 @@
 import { useRef } from "react";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
+import { useFloat } from "@/hooks/use-float";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useRise } from "@/hooks/use-rise";
 import { LogoGlyph } from "@/components/Logo";
 
 export default function NotFound() {
   const sectionRef = useRef<HTMLElement>(null);
+  const glyphFloatRef = useRef<HTMLSpanElement>(null);
   const reduce = useReducedMotion();
+
+  // The mark hovers over the note; the note's own entrance tween runs on the
+  // parent, so the two never touch the same transform.
+  useFloat(glyphFloatRef, { distance: 5, duration: 3.4 });
 
   // Masks the headline lines up, then settles the label and the note under it.
   useRise(sectionRef, {
@@ -70,7 +76,9 @@ export default function NotFound() {
           data-notfound-note
           className="mt-10 flex max-w-xl items-start gap-4 border-t border-ivory/12 pt-8"
         >
-          <LogoGlyph className="mt-1 size-6 shrink-0 text-ember" />
+          <span ref={glyphFloatRef} className="mt-1 shrink-0">
+            <LogoGlyph className="text-ember" />
+          </span>
           <p className="text-[0.95rem] leading-relaxed text-ivory/65">
             The page you asked for is not part of the network. Head back to the
             rescue pool — there is food waiting there right now.

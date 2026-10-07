@@ -3,6 +3,7 @@ import { ArrowDown } from "lucide-react";
 import { RescueNetwork } from "@/components/RescueNetwork";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { ImpactCounter } from "@/components/animations/ImpactCounter";
+import { useFloat } from "@/hooks/use-float";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { usePointerParallax } from "@/hooks/use-pointer";
 import { EASE, gsap, useIsoLayoutEffect } from "@/lib/gsap";
@@ -36,6 +37,8 @@ export function Hero() {
   // transform.
   const bgRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+  const glowFloatRef = useRef<HTMLDivElement>(null);
+  const gridFloatRef = useRef<SVGSVGElement>(null);
   const copyColRef = useRef<HTMLDivElement>(null);
   const copyInnerRef = useRef<HTMLDivElement>(null);
   const netColRef = useRef<HTMLDivElement>(null);
@@ -47,6 +50,13 @@ export function Hero() {
   const stripRef = useRef<HTMLDivElement>(null);
   const stripInnerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<HTMLSpanElement>(null);
+
+  // Ambient drift: the warm glow and the measuring grid breathe at different
+  // rates, so the backdrop reads as depth rather than one moving sheet. Both
+  // only ever touch `y`, leaving the scroll scrub on their parent's `yPercent`
+  // and the pointer parallax on the layer above untouched.
+  useFloat(glowFloatRef, { distance: 12, duration: 9 });
+  useFloat(gridFloatRef, { distance: 20, duration: 13.5, delay: 0.6 });
 
   // Hero entrance: one choreographed timeline that plays before first paint.
   useIsoLayoutEffect(() => {
@@ -161,13 +171,17 @@ export function Hero() {
       <div ref={bgRef} aria-hidden="true" className="pointer-events-none absolute inset-[-10%]">
         <div ref={glowRef} className="absolute inset-0">
           <div
+            ref={glowFloatRef}
             className="absolute inset-0"
             style={{
               background:
                 "radial-gradient(55% 45% at 72% 28%, rgba(226,112,58,0.20), transparent 70%), radial-gradient(50% 45% at 16% 78%, rgba(109,143,106,0.22), transparent 72%)",
             }}
           />
-          <svg className="absolute inset-0 h-full w-full opacity-[0.13]">
+          <svg
+            ref={gridFloatRef}
+            className="absolute inset-0 h-full w-full opacity-[0.13]"
+          >
             <defs>
               <pattern
                 id="hero-grid"

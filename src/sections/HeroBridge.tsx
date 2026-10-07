@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useFloat } from "@/hooks/use-float";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { gsap, useIsoLayoutEffect } from "@/lib/gsap";
 
@@ -13,7 +14,12 @@ export function HeroBridge() {
   const ref = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
   const parcelRef = useRef<HTMLDivElement>(null);
+  const parcelFloatRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
+
+  // The box bobs on the box itself while the scrub timeline drives the outer
+  // wrapper's `top`, so the ride down the line keeps its own timing.
+  useFloat(parcelFloatRef, { distance: 3, duration: 2.8 });
 
   useIsoLayoutEffect(() => {
     const section = ref.current;
@@ -86,7 +92,10 @@ export function HeroBridge() {
         className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-ember"
       />
       <div ref={parcelRef} className="absolute left-1/2 -translate-x-1/2">
-        <div className="-mt-2 h-4 w-5 rounded-[2px] border border-forest/25 bg-ivory">
+        <div
+          ref={parcelFloatRef}
+          className="-mt-2 h-4 w-5 rounded-[2px] border border-forest/25 bg-ivory"
+        >
           <div className="mt-1.5 h-px w-full bg-forest/30" />
           <div className="mx-auto mt-1 size-[3px] rounded-full bg-ember" />
         </div>

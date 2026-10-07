@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { MagneticButton } from "@/components/animations/MagneticButton";
 import { Reveal } from "@/components/animations/text";
+import { useFloat } from "@/hooks/use-float";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useRise } from "@/hooks/use-rise";
 import { gsap } from "@/lib/gsap";
@@ -19,6 +20,10 @@ export function FinalCTA() {
   const diamondRef = useRef<HTMLSpanElement>(null);
 
   useRise(headingRef, { stagger: 0.1, yPercent: 112, start: "top 90%" });
+
+  // The marker drifts on `y` while the baseline tween below drives `left`, so
+  // the two never share a transform channel.
+  useFloat(diamondRef, { distance: 4, duration: 3.2 });
 
   // The ember marker runs the baseline forever — unless motion is reduced.
   useEffect(() => {
@@ -89,10 +94,14 @@ export function FinalCTA() {
         </Reveal>
 
         <div className="relative mt-20 h-px w-full bg-ivory/12">
+          {/* The rotation lives on the inner square, keeping the floated
+              element free of any CSS transform of its own. */}
           <span
             ref={diamondRef}
-            className="absolute -top-[5px] left-0 size-3 rotate-45 bg-ember"
-          />
+            className="absolute -top-[5px] left-0 block size-3"
+          >
+            <span className="block size-3 rotate-45 bg-ember" />
+          </span>
         </div>
 
         <Reveal delay={0.1}>
